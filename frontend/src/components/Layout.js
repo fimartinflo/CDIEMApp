@@ -51,7 +51,7 @@ const Layout = () => {
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Acceso Rápido', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Pacientes', icon: <People />, path: '/patients' },
     { text: 'Sillones', icon: <Chair />, path: '/chairs' },
     { text: 'Inventario', icon: <Inventory />, path: '/inventory' },
@@ -61,7 +61,7 @@ const Layout = () => {
     <div>
       <Toolbar>
         <Typography variant="h6" noWrap>
-          Sistema Dental
+          Sistema CDIEM
         </Typography>
       </Toolbar>
       <List>
@@ -103,7 +103,7 @@ const Layout = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Sistema de Gestión Dental
+            Sistema de Gestión - CDIEM
           </Typography>
           <div>
             <IconButton
