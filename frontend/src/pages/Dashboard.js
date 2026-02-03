@@ -33,10 +33,12 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Dashboard
+      {/* CAMBIO AQUÍ: "Dashboard" por "CDIEM" */}
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+        CDIEM - Panel de Control
       </Typography>
-      <Typography variant="subtitle1" gutterBottom>
+      
+      <Typography variant="subtitle1" gutterBottom sx={{ mb: 3 }}>
         Bienvenido, {user?.username} ({user?.role})
       </Typography>
 
@@ -49,9 +51,11 @@ const Dashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 transition: 'transform 0.3s',
+                border: `2px solid ${card.color}20`,
                 '&:hover': {
                   transform: 'scale(1.03)',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: `0 8px 16px ${card.color}30`
                 }
               }}
               onClick={() => navigate(card.path)}
@@ -60,20 +64,42 @@ const Dashboard = () => {
                 <Box sx={{ color: card.color, mb: 2 }}>
                   {card.icon}
                 </Box>
-                <Typography gutterBottom variant="h5" component="h2">
+                <Typography gutterBottom variant="h5" component="h2" sx={{ fontWeight: 'medium' }}>
                   {card.title}
                 </Typography>
-                <Typography>
+                <Typography variant="body2" color="text.secondary">
                   {card.description}
                 </Typography>
               </CardContent>
-              <Button size="small" sx={{ m: 2 }} variant="outlined">
+              <Button 
+                size="small" 
+                sx={{ 
+                  m: 2, 
+                  color: card.color,
+                  borderColor: card.color,
+                  '&:hover': {
+                    borderColor: card.color,
+                    backgroundColor: `${card.color}10`
+                  }
+                }} 
+                variant="outlined"
+              >
                 Acceder
               </Button>
             </Card>
           </Grid>
         ))}
       </Grid>
+
+      {/* Sección de estadísticas rápida (opcional) */}
+      <Box sx={{ mt: 4, p: 3, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Sistema CDIEM 
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Plataforma integral para la gestión clínica y administrativa
+        </Typography>
+      </Box>
     </Box>
   );
 };

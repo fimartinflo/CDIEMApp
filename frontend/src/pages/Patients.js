@@ -146,17 +146,47 @@ const Patients = () => {
     }
   };
 
-  // Agendar visita
+  // ============ CORRECCIÓN AQUÍ ============
+  // Función para agendar visita - CORREGIDA
   const handleScheduleVisit = async () => {
     try {
-      await patientService.scheduleVisit(selectedPatient.id, scheduleData);
-      setSuccess('Visita agendada exitosamente');
+      if (!selectedPatient) {
+        setError('No hay paciente seleccionado');
+        return;
+      }
+
+      // Verificar que la fecha esté seleccionada
+      if (!scheduleData.fechaVisita) {
+        setError('Por favor seleccione una fecha para la visita');
+        return;
+      }
+
+      // Usar patientService o crear un servicio específico para visitas
+      // Suponiendo que patientService tiene un método scheduleVisit
+      await patientService.scheduleVisit(selectedPatient.id, {
+        fecha: scheduleData.fechaVisita,
+        tipo: scheduleData.tipoVisita,
+        notas: scheduleData.notas
+      });
+
+      setSuccess('Visita agendada correctamente');
       setOpenScheduleDialog(false);
+      
+      // Limpiar datos
+      setScheduleData({
+        fechaVisita: '',
+        tipoVisita: 'consulta',
+        notas: ''
+      });
+      
+      // Recargar pacientes para actualizar estado
       loadPatients();
-    } catch (err) {
-      setError('Error al agendar visita');
+    } catch (error) {
+      console.error('Error agendando visita:', error);
+      setError('Error al agendar visita: ' + (error.response?.data?.message || error.message));
     }
   };
+  // ==========================================
 
   // Obtener color según estado
   const getEstadoColor = (estado) => {
@@ -218,6 +248,8 @@ const Patients = () => {
                 <MenuItem value="activo">Activo</MenuItem>
                 <MenuItem value="inactivo">Inactivo</MenuItem>
                 <MenuItem value="en_tratamiento">En tratamiento</MenuItem>
+                <MenuItem value="sin_asignar">Sin Asignar</MenuItem>
+                <MenuItem value="asignado">Asignado</MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -381,7 +413,7 @@ const Patients = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo: Agendar visita */}
+      {/* Diálogo: Agendar visita - CORREGIDO */}
       <Dialog open={openScheduleDialog} onClose={() => setOpenScheduleDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           Agendar Visita - {selectedPatient?.nombreCompleto}
@@ -423,7 +455,12 @@ const Patients = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenScheduleDialog(false)}>Cancelar</Button>
-          <Button onClick={handleScheduleVisit} variant="contained">Agendar</Button>
+          <Button 
+            onClick={handleScheduleVisit} // Usa la función corregida
+            variant="contained"
+          >
+            Agendar
+          </Button>
         </DialogActions>
       </Dialog>
 
