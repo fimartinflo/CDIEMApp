@@ -1,4 +1,4 @@
-console.log('🔥 APP.JS REAL CARGADO 🔥');
+console.log('Se mostrará cuando esté cargado');
 
 const { sequelize, Chair, Patient, ChairSession, Medication, SessionMedication } = require('./models');
 const express = require('express');
@@ -783,7 +783,7 @@ app.get('/api/chairs/:id/medications', async (req, res) => {
 
 
 // ==================== INVENTARIO ====================
-let inventario = [
+/* let inventario = [
   { 
     id: 1, 
     nombre: 'Medicamento A', 
@@ -806,7 +806,7 @@ let inventario = [
     minimoStock: 10, 
     activo: true 
   }
-];
+]; 
 
 // Obtener todos los medicamentos
 app.get('/api/inventory', (req, res) => {
@@ -819,10 +819,32 @@ app.get('/api/inventory', (req, res) => {
     data: inventarioActivo,
     total: inventarioActivo.length
   });
+}); */
+
+app.get('/api/inventory', async (req, res) => {
+  try {
+    const medications = await Medication.findAll({
+      where: { activo: true }
+    });
+
+    res.json({
+      success: true,
+      data: medications,
+      total: medications.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo inventario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
 });
 
+
 // Crear medicamento
-app.post('/api/inventory', (req, res) => {
+/* app.post('/api/inventory', (req, res) => {
   console.log('➕ Creando medicamento...', req.body);
   
   if (!req.body.nombre) {
@@ -853,7 +875,52 @@ app.post('/api/inventory', (req, res) => {
     message: 'Medicamento creado exitosamente',
     data: newItem
   });
+}); */
+
+app.post('/api/inventory', async (req, res) => {
+  try {
+    const {
+      nombre,
+      descripcion,
+      cantidad,
+      unidad,
+      fechaExpiracion,
+      proveedor,
+      minimoStock
+    } = req.body;
+
+    if (!nombre) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre del medicamento es obligatorio'
+      });
+    }
+
+    const medication = await Medication.create({
+      nombre,
+      descripcion,
+      cantidad: cantidad || 0,
+      unidad: unidad || 'unidad',
+      fechaExpiracion,
+      proveedor,
+      minimoStock: minimoStock || 10
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Medicamento creado exitosamente',
+      data: medication
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando medicamento:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
 });
+
 
 // Actualizar medicamento
 app.put('/api/inventory/:id', (req, res) => {
@@ -897,7 +964,7 @@ app.delete('/api/inventory/:id', (req, res) => {
 });
 
 // Actualizar cantidad (entrada/salida)
-app.put('/api/inventory/:id/quantity', (req, res) => {
+/* app.put('/api/inventory/:id/quantity', (req, res) => {
   const { id } = req.params;
   const { cantidad, tipo, motivo } = req.body;
   
@@ -938,7 +1005,59 @@ app.put('/api/inventory/:id/quantity', (req, res) => {
       motivo
     }
   });
+}); */
+
+app.put('/api/inventory/:id/quantity', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cantidad, tipo, motivo } = req.body;
+
+    const medication = await Medication.findByPk(id);
+
+    if (!medication) {
+      return res.status(404).json({
+        success: false,
+        message: 'Medicamento no encontrado'
+      });
+    }
+
+    if (tipo === 'entrada') {
+      medication.cantidad += cantidad;
+    } else if (tipo === 'salida') {
+      if (cantidad > medication.cantidad) {
+        return res.status(400).json({
+          success: false,
+          message: 'No hay suficiente stock'
+        });
+      }
+      medication.cantidad -= cantidad;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo inválido'
+      });
+    }
+
+    await medication.save();
+
+    res.json({
+      success: true,
+      message: 'Stock actualizado exitosamente',
+      data: {
+        cantidadNueva: medication.cantidad,
+        motivo
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error actualizando stock:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
 });
+
 
 // ==================== ERROR HANDLING ====================
 
