@@ -204,7 +204,7 @@ app.get('/api/patients', async (req, res) => {
 
 
 // Buscar pacientes
-app.get('/api/patients/search', (req, res) => {
+/* app.get('/api/patients/search', (req, res) => {
   const { query } = req.query;
   
   if (!query || query.length < 2) {
@@ -223,7 +223,7 @@ app.get('/api/patients/search', (req, res) => {
     success: true,
     data: results
   });
-});
+}); */
 
 // Crear paciente
 /* app.post('/api/patients', (req, res) => {
@@ -325,7 +325,7 @@ app.post('/api/patients', async (req, res) => {
 
 
 // Actualizar paciente
-app.put('/api/patients/:id', (req, res) => {
+/* app.put('/api/patients/:id', (req, res) => {
   const { id } = req.params;
   const index = pacientes.findIndex(p => p.id === parseInt(id));
   
@@ -363,7 +363,7 @@ app.delete('/api/patients/:id', (req, res) => {
     success: true,
     message: 'Paciente desactivado exitosamente'
   });
-});
+}); */
 
 // ==================== SILLONES ====================
 let sillones = [
@@ -508,7 +508,7 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
       });
     }
 
-    // 2️⃣ Buscar paciente
+    // Buscar paciente
     const patient = await Patient.findByPk(pacienteId, { transaction });
     if (!patient) {
       await transaction.rollback();
@@ -517,6 +517,34 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
         message: 'Paciente no encontrado'
       });
     }
+
+    //  Validar que el paciente esté ACTIVO
+if (patient.estado !== 'activo') {
+  await transaction.rollback();
+  return res.status(400).json({
+    success: false,
+    message: 'El paciente no está activo y no puede iniciar sesión'
+  });
+}
+
+
+    // Validar que el paciente NO tenga otra sesión activa
+const activePatientSession = await ChairSession.findOne({
+  where: {
+    patientId: patient.id,
+    estado: 'activa'
+  },
+  transaction
+});
+
+if (activePatientSession) {
+  await transaction.rollback();
+  return res.status(400).json({
+    success: false,
+    message: 'El paciente ya tiene una sesión activa en otro sillón'
+  });
+}
+
 
     // 3️⃣ Verificar sesión activa
     const activeSession = await ChairSession.findOne({
@@ -923,7 +951,7 @@ app.post('/api/inventory', async (req, res) => {
 
 
 // Actualizar medicamento
-app.put('/api/inventory/:id', (req, res) => {
+/* app.put('/api/inventory/:id', (req, res) => {
   const { id } = req.params;
   const index = inventario.findIndex(item => item.id === parseInt(id));
   
@@ -961,7 +989,7 @@ app.delete('/api/inventory/:id', (req, res) => {
     success: true,
     message: 'Medicamento eliminado exitosamente'
   });
-});
+}); */
 
 // Actualizar cantidad (entrada/salida)
 /* app.put('/api/inventory/:id/quantity', (req, res) => {
