@@ -1,52 +1,87 @@
-const { syncDatabase } = require('./src/config/database');
-const User = require('./src/models/User');
+const {
+  sequelize,
+  Chair,
+  Medication
+} = require('./src/models');
 
-const initializeDatabase = async () => {
+(async () => {
   try {
-    console.log('🔄 Inicializando base de datos...');
-    
-    // Sincronizar modelos
-    await syncDatabase(true); // true para reinicializar
-    
-    // Crear usuarios por defecto
-    const defaultUsers = [
+    console.log('🗄️ Inicializando base de datos...');
+
+    // 1️⃣ Sincronizar modelos (desarrollo)
+    await sequelize.sync({ force: true });
+
+    console.log('✅ Tablas recreadas');
+
+    // 2️⃣ Crear sillones
+    await Chair.bulkCreate([
       {
-        username: 'admin',
-        password: 'admin123',
-        email: 'admin@dentalclinic.com',
-        fullName: 'Administrador Principal',
-        role: 'admin'
+        numero: 'S1',
+        nombre: 'Sillón 1',
+        ubicacion: 'Sala A',
+        estado: 'disponible',
+        activo: true
       },
       {
-        username: 'doctor',
-        password: 'doctor123',
-        email: 'doctor@dentalclinic.com',
-        fullName: 'Dr. Juan Pérez',
-        role: 'doctor'
+        numero: 'S2',
+        nombre: 'Sillón 2',
+        ubicacion: 'Sala A',
+        estado: 'disponible',
+        activo: true
       },
       {
-        username: 'asistente',
-        password: 'asistente123',
-        email: 'asistente@dentalclinic.com',
-        fullName: 'María González',
-        role: 'asistente'
+        numero: 'S3',
+        nombre: 'Sillón 3',
+        ubicacion: 'Sala B',
+        estado: 'disponible',
+        activo: true
+      },
+      {
+        numero: 'S4',
+        nombre: 'Sillón 4',
+        ubicacion: 'Sala B',
+        estado: 'mantenimiento',
+        activo: true
       }
-    ];
+    ]);
 
-    for (const userData of defaultUsers) {
-      const userExists = await User.findOne({ where: { username: userData.username } });
-      if (!userExists) {
-        await User.create(userData);
-        console.log(`✅ Usuario ${userData.username} creado`);
+    console.log('🪑 Sillones creados');
+
+    // 3️⃣ Crear medicamentos
+    await Medication.bulkCreate([
+      {
+        nombre: 'Medicamento A',
+        descripcion: 'Para tratamiento oncológico X',
+        cantidad: 10,
+        unidad: 'unidad',
+        minimoStock: 5,
+        activo: true
+      },
+      {
+        nombre: 'Medicamento B',
+        descripcion: 'Para tratamiento oncológico Y',
+        cantidad: 5,
+        unidad: 'unidad',
+        minimoStock: 10,
+        activo: true
+      },
+      {
+        nombre: 'Suero fisiológico',
+        descripcion: 'Solución salina',
+        cantidad: 20,
+        unidad: 'bolsa',
+        minimoStock: 5,
+        activo: true
       }
-    }
+    ]);
 
-    console.log('✅ Base de datos inicializada exitosamente');
+    console.log('💊 Medicamentos creados');
+
+    console.log('🎉 Base de datos inicializada correctamente');
     process.exit(0);
+
   } catch (error) {
-    console.error('❌ Error al inicializar la base de datos:', error);
+    console.error('❌ Error inicializando la base de datos:', error);
     process.exit(1);
   }
-};
-
-initializeDatabase();
+})();

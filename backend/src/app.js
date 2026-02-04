@@ -1,8 +1,23 @@
+console.log('🔥 APP.JS REAL CARGADO 🔥');
+
+const { sequelize, Chair, Patient, ChairSession, Medication, SessionMedication } = require('./models');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+(async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync(); // 👈 ESTO ES LO QUE FALTA
+    console.log('✅ Conectado y sincronizado con SQLite correctamente');
+  } catch (error) {
+    console.error('❌ Error conectando/sincronizando la BD:', error);
+  }
+})();
+
+
 
 // Middleware - Configurar CORS más permisivo
 app.use(cors({
@@ -104,7 +119,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // ==================== PACIENTES ====================
-let pacientes = [
+/* let pacientes = [
   {
     id: 1,
     nombreCompleto: 'Juan Pérez González',
@@ -133,10 +148,10 @@ let pacientes = [
     estado: 'en_tratamiento',
     createdAt: '2024-01-20T14:45:00Z'
   }
-];
+]; */
 
 // Obtener todos los pacientes
-app.get('/api/patients', (req, res) => {
+/* app.get('/api/patients', (req, res) => {
   const { page = 1, limit = 10, search = '', estado = '' } = req.query;
   
   let filtered = [...pacientes];
@@ -166,7 +181,27 @@ app.get('/api/patients', (req, res) => {
       limit: parseInt(limit)
     }
   });
+}); */
+
+app.get('/api/patients', async (req, res) => {
+  try {
+    const patients = await Patient.findAll();
+
+    res.json({
+      success: true,
+      data: patients,
+      total: patients.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo pacientes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
 });
+
 
 // Buscar pacientes
 app.get('/api/patients/search', (req, res) => {
@@ -191,7 +226,7 @@ app.get('/api/patients/search', (req, res) => {
 });
 
 // Crear paciente
-app.post('/api/patients', (req, res) => {
+/* app.post('/api/patients', (req, res) => {
   console.log('📝 Creando paciente...', req.body);
   
   if (!req.body.nombreCompleto) {
@@ -227,7 +262,67 @@ app.post('/api/patients', (req, res) => {
     message: 'Paciente creado exitosamente',
     data: newPatient
   });
+}); */
+
+app.post('/api/patients', async (req, res) => {
+  try {
+    const {
+      nombreCompleto,
+      tipoIdentificacion,
+      rut,
+      pasaporte,
+      fechaNacimiento,
+      prevision,
+      telefono,
+      correo,
+      genero,
+      direccion
+    } = req.body;
+
+    if (!nombreCompleto) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre completo es obligatorio'
+      });
+    }
+
+    const patient = await Patient.create({
+      nombreCompleto,
+      tipoIdentificacion,
+      rut,
+      pasaporte,
+      fechaNacimiento,
+      prevision,
+      telefono,
+      correo,
+      genero,
+      direccion
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Paciente creado exitosamente',
+      data: patient
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando paciente:', error);
+
+    // RUT duplicado
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un paciente con ese RUT'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
 });
+
 
 // Actualizar paciente
 app.put('/api/patients/:id', (req, res) => {
@@ -279,7 +374,7 @@ let sillones = [
 ];
 
 // Obtener todos los sillones
-app.get('/api/chairs', (req, res) => {
+/* app.get('/api/chairs', (req, res) => {
   console.log('🪑 Solicitando sillones...');
   
   const sillonesActivos = sillones.filter(s => s.activo !== false);
@@ -290,9 +385,33 @@ app.get('/api/chairs', (req, res) => {
     total: sillonesActivos.length
   });
 });
+*/
+
+app.get('/api/chairs', async (req, res) => {
+  try {
+    const chairs = await Chair.findAll({
+      where: { activo: true }
+    });
+
+    res.json({
+      success: true,
+      data: chairs,
+      total: chairs.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo sillones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
+
 
 // Crear sillón
-app.post('/api/chairs', (req, res) => {
+/* app.post('/api/chairs', (req, res) => {
   console.log('➕ Creando sillón...', req.body);
   
   if (!req.body.numero || !req.body.nombre) {
@@ -320,10 +439,10 @@ app.post('/api/chairs', (req, res) => {
     message: 'Sillón creado exitosamente',
     data: newChair
   });
-});
+}); */
 
 // Actualizar sillón
-app.put('/api/chairs/:id', (req, res) => {
+/* app.put('/api/chairs/:id', (req, res) => {
   const { id } = req.params;
   const index = sillones.findIndex(s => s.id === parseInt(id));
   
@@ -341,10 +460,10 @@ app.put('/api/chairs/:id', (req, res) => {
     message: 'Sillón actualizado exitosamente',
     data: sillones[index]
   });
-});
+}); */
 
 // Eliminar sillón
-app.delete('/api/chairs/:id', (req, res) => {
+/* app.delete('/api/chairs/:id', (req, res) => {
   const { id } = req.params;
   const index = sillones.findIndex(s => s.id === parseInt(id));
   
@@ -361,96 +480,307 @@ app.delete('/api/chairs/:id', (req, res) => {
     success: true,
     message: 'Sillón eliminado exitosamente'
   });
-});
+}); */
 
 // Asignar paciente a sillón
-app.post('/api/chairs/:id/assign', (req, res) => {
-  const { id } = req.params;
-  const { pacienteId, medicamentos } = req.body;
-  
-  const index = sillones.findIndex(s => s.id === parseInt(id));
-  
-  if (index === -1) {
-    return res.status(404).json({
+app.post('/api/chairs/:id/assign', async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    const { pacienteId } = req.body;
+
+    // 1️⃣ Buscar sillón
+    const chair = await Chair.findByPk(id, { transaction });
+    if (!chair || !chair.activo) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Sillón no encontrado'
+      });
+    }
+
+    if (chair.estado !== 'disponible') {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'El sillón no está disponible'
+      });
+    }
+
+    // 2️⃣ Buscar paciente
+    const patient = await Patient.findByPk(pacienteId, { transaction });
+    if (!patient) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Paciente no encontrado'
+      });
+    }
+
+    // 3️⃣ Verificar sesión activa
+    const activeSession = await ChairSession.findOne({
+      where: {
+        chairId: chair.id,
+        estado: 'activa'
+      },
+      transaction
+    });
+
+    if (activeSession) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'El sillón ya tiene una sesión activa'
+      });
+    }
+
+    // 4️⃣ Crear sesión
+    const session = await ChairSession.create({
+      chairId: chair.id,
+      patientId: patient.id,
+      horaInicio: new Date(),
+      estado: 'activa'
+    }, { transaction });
+
+    // 5️⃣ Actualizar sillón
+    chair.estado = 'ocupado';
+    await chair.save({ transaction });
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: 'Paciente asignado al sillón exitosamente',
+      data: {
+        chair,
+        session
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error asignando sillón:', error);
+    res.status(500).json({
       success: false,
-      message: 'Sillón no encontrado'
+      message: 'Error interno del servidor'
     });
   }
-  
-  if (sillones[index].estado === 'ocupado') {
-    return res.status(400).json({
-      success: false,
-      message: 'El sillón ya está ocupado'
-    });
-  }
-  
-  const paciente = pacientes.find(p => p.id === parseInt(pacienteId));
-  
-  if (!paciente) {
-    return res.status(404).json({
-      success: false,
-      message: 'Paciente no encontrado'
-    });
-  }
-  
-  // Actualizar sillón
-  sillones[index].estado = 'ocupado';
-  sillones[index].pacienteActual = paciente.nombreCompleto;
-  sillones[index].pacienteActualId = paciente.id;
-  sillones[index].horaInicio = new Date().toISOString();
-  sillones[index].medicamentosAdministrados = medicamentos || [];
-  
-  console.log(`✅ Paciente ${paciente.nombreCompleto} asignado al sillón ${sillones[index].numero}`);
-  
-  res.json({
-    success: true,
-    message: 'Paciente asignado al sillón exitosamente',
-    data: sillones[index]
-  });
 });
 
+
 // Liberar sillón
-app.post('/api/chairs/:id/release', (req, res) => {
-  const { id } = req.params;
-  const index = sillones.findIndex(s => s.id === parseInt(id));
-  
-  if (index === -1) {
-    return res.status(404).json({
-      success: false,
-      message: 'Sillón no encontrado'
-    });
-  }
-  
-  if (sillones[index].estado !== 'ocupado') {
-    return res.status(400).json({
-      success: false,
-      message: 'El sillón no está ocupado'
-    });
-  }
-  
-  const horaInicio = new Date(sillones[index].horaInicio);
-  const horaFin = new Date();
-  const duracionMinutos = Math.round((horaFin - horaInicio) / (1000 * 60));
-  
-  // Actualizar sillón
-  sillones[index].estado = 'disponible';
-  sillones[index].pacienteActual = null;
-  sillones[index].pacienteActualId = null;
-  sillones[index].horaFin = horaFin.toISOString();
-  sillones[index].notas = `Atención completada. Duración: ${duracionMinutos} minutos`;
-  
-  console.log(`✅ Sillón ${sillones[index].numero} liberado. Duración: ${duracionMinutos} minutos`);
-  
-  res.json({
-    success: true,
-    message: 'Sillón liberado exitosamente',
-    data: {
-      duracionMinutos,
-      horaInicio: horaInicio.toISOString(),
-      horaFin: horaFin.toISOString()
+app.post('/api/chairs/:id/release', async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+
+    // 1️⃣ Buscar sillón
+    const chair = await Chair.findByPk(id, { transaction });
+    if (!chair) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Sillón no encontrado'
+      });
     }
-  });
+
+    // 2️⃣ Buscar sesión activa
+    const session = await ChairSession.findOne({
+      where: {
+        chairId: chair.id,
+        estado: 'activa'
+      },
+      transaction
+    });
+
+    if (!session) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'No hay sesión activa en este sillón'
+      });
+    }
+
+    // 3️⃣ Calcular duración
+    const horaFin = new Date();
+    const duracionMinutos = Math.round(
+      (horaFin - new Date(session.horaInicio)) / 60000
+    );
+
+    // 4️⃣ Cerrar sesión
+    session.horaFin = horaFin;
+    session.estado = 'finalizada';
+    session.notas = `Atención completada. Duración: ${duracionMinutos} minutos`;
+    await session.save({ transaction });
+
+    // 5️⃣ Liberar sillón
+    chair.estado = 'disponible';
+    await chair.save({ transaction });
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: 'Sillón liberado exitosamente',
+      data: {
+        duracionMinutos,
+        horaInicio: session.horaInicio,
+        horaFin
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error liberando sillón:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
 });
+
+app.post('/api/chairs/:id/medications', async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    const { medicationId, cantidad } = req.body;
+
+    if (!medicationId || !cantidad || cantidad <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Debe indicar medicamento y cantidad válida'
+      });
+    }
+
+    // 1️⃣ Buscar sillón
+    const chair = await Chair.findByPk(id, { transaction });
+    if (!chair) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Sillón no encontrado'
+      });
+    }
+
+    // 2️⃣ Buscar sesión activa
+    const session = await ChairSession.findOne({
+      where: {
+        chairId: chair.id,
+        estado: 'activa'
+      },
+      transaction
+    });
+
+    if (!session) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'El sillón no tiene una sesión activa'
+      });
+    }
+
+    // 3️⃣ Buscar medicamento
+    const medication = await Medication.findByPk(medicationId, { transaction });
+    if (!medication || !medication.activo) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Medicamento no encontrado'
+      });
+    }
+
+    // 4️⃣ Validar stock
+    if (medication.cantidad < cantidad) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Stock insuficiente. Disponible: ${medication.cantidad}`
+      });
+    }
+
+    // 5️⃣ Descontar stock
+    medication.cantidad -= cantidad;
+    await medication.save({ transaction });
+
+    // 6️⃣ Registrar administración
+    const registro = await SessionMedication.create({
+      sessionId: session.id,
+      medicationId: medication.id,
+      cantidadAdministrada: cantidad
+    }, { transaction });
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: 'Medicamento administrado exitosamente',
+      data: {
+        sessionId: session.id,
+        medicamento: medication.nombre,
+        cantidadAdministrada: cantidad,
+        stockRestante: medication.cantidad,
+        registro
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error administrando medicamento:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
+app.get('/api/chairs/:id/medications', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const session = await ChairSession.findOne({
+      where: {
+        chairId: id,
+        estado: 'activa'
+      },
+      include: [{
+        model: SessionMedication,
+        include: [Medication]
+      }]
+    });
+
+    if (!session) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    const medicamentos = session.SessionMedications.map(sm => ({
+      id: sm.id,
+      nombre: sm.Medication.nombre,
+      cantidad: sm.cantidadAdministrada,
+      hora: sm.horaAdministracion
+    }));
+
+    res.json({
+      success: true,
+      data: medicamentos
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo medicamentos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
+
 
 // ==================== INVENTARIO ====================
 let inventario = [
@@ -611,6 +941,12 @@ app.put('/api/inventory/:id/quantity', (req, res) => {
 });
 
 // ==================== ERROR HANDLING ====================
+
+app.get('/__test', (req, res) => {
+  res.json({ ok: true });
+});
+
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
