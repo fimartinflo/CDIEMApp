@@ -482,6 +482,8 @@ app.get('/api/chairs', async (req, res) => {
   });
 }); */
 
+
+
 // Asignar paciente a sillón
 app.post('/api/chairs/:id/assign', async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -490,8 +492,11 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
     const { id } = req.params;
     const { pacienteId } = req.body;
 
-    // 1️⃣ Buscar sillón
+    /* =========================
+       1️⃣ Buscar sillón
+    ========================= */
     const chair = await Chair.findByPk(id, { transaction });
+
     if (!chair || !chair.activo) {
       await transaction.rollback();
       return res.status(404).json({
@@ -500,6 +505,16 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
       });
     }
 
+    /* 🪑 R7 — Sillón en mantenimiento */
+    if (chair.estado === 'mantenimiento') {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'El sillón está en mantenimiento y no puede ser asignado'
+      });
+    }
+
+    /* Estado general */
     if (chair.estado !== 'disponible') {
       await transaction.rollback();
       return res.status(400).json({
@@ -508,8 +523,11 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
       });
     }
 
-    // Buscar paciente
+    /* =========================
+       2️⃣ Buscar paciente
+    ========================= */
     const patient = await Patient.findByPk(pacienteId, { transaction });
+
     if (!patient) {
       await transaction.rollback();
       return res.status(404).json({
@@ -518,36 +536,36 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
       });
     }
 
-    //  Validar que el paciente esté ACTIVO
-if (patient.estado !== 'activo') {
-  await transaction.rollback();
-  return res.status(400).json({
-    success: false,
-    message: 'El paciente no está activo y no puede iniciar sesión'
-  });
-}
+    /* 🩺 R6 — Paciente debe estar ACTIVO */
+    if (patient.estado !== 'activo') {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'El paciente no está activo y no puede iniciar sesión'
+      });
+    }
 
+    /* 🩺 R1 + R8 — Paciente no puede tener otra sesión activa */
+    const activePatientSession = await ChairSession.findOne({
+      where: {
+        patientId: patient.id,
+        estado: 'activa'
+      },
+      transaction
+    });
 
-    // Validar que el paciente NO tenga otra sesión activa
-const activePatientSession = await ChairSession.findOne({
-  where: {
-    patientId: patient.id,
-    estado: 'activa'
-  },
-  transaction
-});
+    if (activePatientSession) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'El paciente ya tiene una sesión activa en otro sillón'
+      });
+    }
 
-if (activePatientSession) {
-  await transaction.rollback();
-  return res.status(400).json({
-    success: false,
-    message: 'El paciente ya tiene una sesión activa en otro sillón'
-  });
-}
-
-
-    // 3️⃣ Verificar sesión activa
-    const activeSession = await ChairSession.findOne({
+    /* =========================
+       3️⃣ Validar sesión activa del sillón
+    ========================= */
+    const activeChairSession = await ChairSession.findOne({
       where: {
         chairId: chair.id,
         estado: 'activa'
@@ -555,7 +573,7 @@ if (activePatientSession) {
       transaction
     });
 
-    if (activeSession) {
+    if (activeChairSession) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
@@ -563,7 +581,9 @@ if (activePatientSession) {
       });
     }
 
-    // 4️⃣ Crear sesión
+    /* =========================
+       4️⃣ Crear sesión
+    ========================= */
     const session = await ChairSession.create({
       chairId: chair.id,
       patientId: patient.id,
@@ -571,13 +591,15 @@ if (activePatientSession) {
       estado: 'activa'
     }, { transaction });
 
-    // 5️⃣ Actualizar sillón
+    /* =========================
+       5️⃣ Actualizar sillón
+    ========================= */
     chair.estado = 'ocupado';
     await chair.save({ transaction });
 
     await transaction.commit();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Paciente asignado al sillón exitosamente',
       data: {
@@ -589,12 +611,14 @@ if (activePatientSession) {
   } catch (error) {
     await transaction.rollback();
     console.error('❌ Error asignando sillón:', error);
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
     });
   }
 });
+
 
 
 // Liberar sillón
@@ -733,6 +757,10 @@ app.post('/api/chairs/:id/medications', async (req, res) => {
     // 5️⃣ Descontar stock
     medication.cantidad -= cantidad;
     await medication.save({ transaction });
+    // 💊 R9: Alerta de stock mínimo (NO bloqueante)
+    const alertaStock = medication.cantidad <= medication.minimoStock;
+
+
 
     // 6️⃣ Registrar administración
     const registro = await SessionMedication.create({
@@ -743,17 +771,20 @@ app.post('/api/chairs/:id/medications', async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      success: true,
-      message: 'Medicamento administrado exitosamente',
-      data: {
-        sessionId: session.id,
-        medicamento: medication.nombre,
-        cantidadAdministrada: cantidad,
-        stockRestante: medication.cantidad,
-        registro
-      }
-    });
+  res.json({
+  success: true,
+  message: 'Medicamento administrado exitosamente',
+  data: {
+    sessionId: session.id,
+    medicamento: medication.nombre,
+    cantidadAdministrada: cantidad,
+    stockRestante: medication.cantidad,
+    minimoStock: medication.minimoStock,
+    alertaStock,
+    registro
+    }
+  });
+
 
   } catch (error) {
     await transaction.rollback();
