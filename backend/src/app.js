@@ -1,5 +1,7 @@
 console.log('Se mostrará cuando esté cargado');
 
+
+const { success, error } = require('./utils/response');
 const { sequelize, Chair, Patient, ChairSession, Medication, SessionMedication } = require('./models');
 const express = require('express');
 const cors = require('cors');
@@ -276,7 +278,8 @@ app.post('/api/patients', async (req, res) => {
       telefono,
       correo,
       genero,
-      direccion
+      direccion,
+      estado
     } = req.body;
 
     if (!nombreCompleto) {
@@ -296,8 +299,10 @@ app.post('/api/patients', async (req, res) => {
       telefono,
       correo,
       genero,
-      direccion
+      direccion,
+      estado: estado || 'activo'
     });
+
 
     res.status(201).json({
       success: true,
@@ -539,10 +544,13 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
     /* 🩺 R6 — Paciente debe estar ACTIVO */
     if (patient.estado !== 'activo') {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'El paciente no está activo y no puede iniciar sesión'
-      });
+      return error(
+      res,
+      'El paciente no está activo y no puede iniciar sesión',
+      'PATIENT_INACTIVE',
+       400
+      );
+
     }
 
     /* 🩺 R1 + R8 — Paciente no puede tener otra sesión activa */
