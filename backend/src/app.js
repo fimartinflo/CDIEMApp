@@ -6,13 +6,14 @@ const { sequelize, Chair, Patient, ChairSession, Medication, SessionMedication }
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const app = express();
+const auth = require('./middleware/auth');
+const allowRoles = require('./middleware/roles');
 
 (async () => {
   try {
     await sequelize.authenticate();
-    await sequelize.sync(); // 👈 ESTO ES LO QUE FALTA
+    await sequelize.sync();
     console.log('✅ Conectado y sincronizado con SQLite correctamente');
   } catch (error) {
     console.error('❌ Error conectando/sincronizando la BD:', error);
@@ -84,41 +85,47 @@ const users = [
 ];
 
 // Login
+const jwt = require('jsonwebtoken');
+const SECRET = process.env.JWT_SECRET || 'cdiem_secret_dev';
+
 app.post('/api/auth/login', (req, res) => {
   try {
     const { username, password } = req.body;
-    console.log('🔐 Intento de login:', username);
-    
-    const user = users.find(u => u.username === username && u.password === password);
-    
+
+    const user = users.find(
+      u => u.username === username && u.password === password
+    );
+
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciales incorrectas'
-      });
+      return error(res, 'Credenciales incorrectas', 'INVALID_CREDENTIALS', 401);
     }
-    
-    const { password: _, ...userWithoutPassword } = user;
-    const token = 'token_desarrollo_' + Date.now();
-    
-    console.log('✅ Login exitoso para:', username);
-    
-    res.json({
-      success: true,
-      message: 'Login exitoso',
-      data: {
-        user: userWithoutPassword,
-        token
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      },
+      SECRET,
+      { expiresIn: '8h' }
+    );
+
+    return success(res, {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        fullName: user.fullName
       }
-    });
-  } catch (error) {
-    console.error('❌ Error en login:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+    }, 'Login exitoso');
+
+  } catch (err) {
+    console.error('❌ Error en login:', err);
+    return error(res, 'Error interno del servidor', 'LOGIN_FAILED', 500);
   }
 });
+
 
 // ==================== PACIENTES ====================
 /* let pacientes = [
@@ -189,20 +196,17 @@ app.get('/api/patients', async (req, res) => {
   try {
     const patients = await Patient.findAll();
 
-    res.json({
-      success: true,
-      data: patients,
+    return success(res, {
+      items: patients,
       total: patients.length
     });
 
-  } catch (error) {
-    console.error('❌ Error obteniendo pacientes:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+  } catch (err) {
+    console.error('❌ Error obteniendo pacientes:', err);
+    return error(res, 'Error obteniendo pacientes', 'PATIENTS_FETCH_FAILED', 500);
   }
 });
+
 
 
 // Buscar pacientes
@@ -398,20 +402,17 @@ app.get('/api/chairs', async (req, res) => {
       where: { activo: true }
     });
 
-    res.json({
-      success: true,
-      data: chairs,
+    return success(res, {
+      items: chairs,
       total: chairs.length
     });
 
-  } catch (error) {
-    console.error('❌ Error obteniendo sillones:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+  } catch (err) {
+    console.error('❌ Error obteniendo sillones:', err);
+    return error(res, 'Error obteniendo sillones', 'CHAIRS_FETCH_FAILED', 500);
   }
 });
+
 
 
 
@@ -490,70 +491,62 @@ app.get('/api/chairs', async (req, res) => {
 
 
 // Asignar paciente a sillón
-app.post('/api/chairs/:id/assign', async (req, res) => {
+app.post('/api/chairs/:id/assign', auth, allowRoles('admin','doctor'), async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
     const { id } = req.params;
     const { pacienteId } = req.body;
 
-    /* =========================
-       1️⃣ Buscar sillón
-    ========================= */
+    // 1️⃣ Buscar sillón
     const chair = await Chair.findByPk(id, { transaction });
 
     if (!chair || !chair.activo) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Sillón no encontrado'
-      });
+      return error(res, 'Sillón no encontrado', 'CHAIR_NOT_FOUND', 404);
     }
 
-    /* 🪑 R7 — Sillón en mantenimiento */
+    // R7 — Sillón en mantenimiento
     if (chair.estado === 'mantenimiento') {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'El sillón está en mantenimiento y no puede ser asignado'
-      });
+      return error(
+        res,
+        'El sillón está en mantenimiento y no puede ser asignado',
+        'CHAIR_IN_MAINTENANCE',
+        400
+      );
     }
 
-    /* Estado general */
     if (chair.estado !== 'disponible') {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'El sillón no está disponible'
-      });
+      return error(
+        res,
+        'El sillón no está disponible',
+        'CHAIR_NOT_AVAILABLE',
+        400
+      );
     }
 
-    /* =========================
-       2️⃣ Buscar paciente
-    ========================= */
+    // 2️⃣ Buscar paciente
     const patient = await Patient.findByPk(pacienteId, { transaction });
 
     if (!patient) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Paciente no encontrado'
-      });
+      return error(res, 'Paciente no encontrado', 'PATIENT_NOT_FOUND', 404);
     }
 
-    /* 🩺 R6 — Paciente debe estar ACTIVO */
+    // R6 — Paciente debe estar ACTIVO
     if (patient.estado !== 'activo') {
       await transaction.rollback();
       return error(
-      res,
-      'El paciente no está activo y no puede iniciar sesión',
-      'PATIENT_INACTIVE',
-       400
+        res,
+        'El paciente no está activo y no puede iniciar sesión',
+        'PATIENT_INACTIVE',
+        400
       );
-
     }
 
-    /* 🩺 R1 + R8 — Paciente no puede tener otra sesión activa */
+    // R1 + R8 — Paciente no puede tener otra sesión activa
     const activePatientSession = await ChairSession.findOne({
       where: {
         patientId: patient.id,
@@ -564,15 +557,15 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
 
     if (activePatientSession) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'El paciente ya tiene una sesión activa en otro sillón'
-      });
+      return error(
+        res,
+        'El paciente ya tiene una sesión activa en otro sillón',
+        'PATIENT_ALREADY_ASSIGNED',
+        400
+      );
     }
 
-    /* =========================
-       3️⃣ Validar sesión activa del sillón
-    ========================= */
+    // 3️⃣ Validar sesión activa del sillón
     const activeChairSession = await ChairSession.findOne({
       where: {
         chairId: chair.id,
@@ -583,15 +576,15 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
 
     if (activeChairSession) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'El sillón ya tiene una sesión activa'
-      });
+      return error(
+        res,
+        'El sillón ya tiene una sesión activa',
+        'CHAIR_ALREADY_OCCUPIED',
+        400
+      );
     }
 
-    /* =========================
-       4️⃣ Crear sesión
-    ========================= */
+    // 4️⃣ Crear sesión
     const session = await ChairSession.create({
       chairId: chair.id,
       patientId: patient.id,
@@ -599,33 +592,30 @@ app.post('/api/chairs/:id/assign', async (req, res) => {
       estado: 'activa'
     }, { transaction });
 
-    /* =========================
-       5️⃣ Actualizar sillón
-    ========================= */
+    // 5️⃣ Actualizar sillón
     chair.estado = 'ocupado';
     await chair.save({ transaction });
 
     await transaction.commit();
 
-    return res.json({
-      success: true,
-      message: 'Paciente asignado al sillón exitosamente',
-      data: {
-        chair,
-        session
-      }
-    });
+    return success(res, {
+      chair,
+      session
+    }, 'Paciente asignado al sillón exitosamente');
 
-  } catch (error) {
+  } catch (err) {
     await transaction.rollback();
-    console.error('❌ Error asignando sillón:', error);
+    console.error('❌ Error asignando sillón:', err);
 
-    return res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+    return error(
+      res,
+      'Error interno del servidor',
+      'ASSIGNMENT_FAILED',
+      500
+    );
   }
 });
+
 
 
 
@@ -701,7 +691,7 @@ app.post('/api/chairs/:id/release', async (req, res) => {
   }
 });
 
-app.post('/api/chairs/:id/medications', async (req, res) => {
+app.post('/api/chairs/:id/medications', auth, allowRoles('admin','doctor'), async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
@@ -894,20 +884,17 @@ app.get('/api/inventory', async (req, res) => {
       where: { activo: true }
     });
 
-    res.json({
-      success: true,
-      data: medications,
+    return success(res, {
+      items: medications,
       total: medications.length
     });
 
-  } catch (error) {
-    console.error('❌ Error obteniendo inventario:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+  } catch (err) {
+    console.error('❌ Error obteniendo inventario:', err);
+    return error(res, 'Error obteniendo inventario', 'INVENTORY_FETCH_FAILED', 500);
   }
 });
+
 
 
 // Crear medicamento
@@ -1124,6 +1111,212 @@ app.put('/api/inventory/:id/quantity', async (req, res) => {
     });
   }
 });
+
+
+// ==================== DASHBOARD CLÍNICO ====================
+
+app.get('/api/dashboard', auth,  async (req, res) => {
+  try {
+
+    const totalPacientes = await Patient.count();
+    const pacientesActivos = await Patient.count({
+      where: { estado: 'activo' }
+    });
+
+    const sillonesDisponibles = await Chair.count({
+      where: { estado: 'disponible' }
+    });
+
+    const sillonesOcupados = await Chair.count({
+      where: { estado: 'ocupado' }
+    });
+
+    const sillonesMantenimiento = await Chair.count({
+      where: { estado: 'mantenimiento' }
+    });
+
+    const sesionesActivas = await ChairSession.count({
+      where: { estado: 'activa' }
+    });
+
+    const medicamentosCriticos = await Medication.findAll({
+      where: sequelize.where(
+        sequelize.col('cantidad'),
+        '<=',
+        sequelize.col('minimoStock')
+      )
+    });
+
+    return success(res, {
+      pacientes: {
+        total: totalPacientes,
+        activos: pacientesActivos
+      },
+      sillones: {
+        disponibles: sillonesDisponibles,
+        ocupados: sillonesOcupados,
+        mantenimiento: sillonesMantenimiento
+      },
+      sesionesActivas,
+      medicamentosCriticos
+    });
+
+  } catch (err) {
+    console.error('❌ Error obteniendo dashboard:', err);
+    return error(res, 'Error obteniendo dashboard', 'DASHBOARD_FETCH_FAILED', 500);
+  }
+});
+
+// ==================== ESTADO EN VIVO DE SILLONES ====================
+
+app.get('/api/chairs/live', auth,  async (req, res) => {
+  try {
+    const chairs = await Chair.findAll({
+      where: { activo: true },
+      include: [
+        {
+          model: ChairSession,
+          where: { estado: 'activa' },
+          required: false,
+          include: [
+            {
+              model: Patient
+            },
+            {
+              model: SessionMedication,
+              include: [Medication]
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = chairs.map(chair => {
+      const session = chair.ChairSessions?.[0];
+
+      return {
+        id: chair.id,
+        numero: chair.numero,
+        nombre: chair.nombre,
+        estado: chair.estado,
+        ubicacion: chair.ubicacion,
+
+        paciente: session
+          ? {
+              id: session.Patient.id,
+              nombre: session.Patient.nombreCompleto,
+              horaInicio: session.horaInicio
+            }
+          : null,
+
+        medicamentos: session
+          ? session.SessionMedications.map(sm => ({
+              nombre: sm.Medication.nombre,
+              cantidad: sm.cantidadAdministrada
+            }))
+          : []
+      };
+    });
+
+    return success(res, result);
+
+  } catch (err) {
+    console.error('❌ Error obteniendo estado en vivo:', err);
+    return error(res, 'Error obteniendo estado en vivo', 'CHAIRS_LIVE_FAILED', 500);
+  }
+});
+
+// ==================== HISTORIAL CLÍNICO POR PACIENTE ====================
+
+app.get('/api/patients/:id/history', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const sessions = await ChairSession.findAll({
+      where: { patientId: id },
+      include: [
+        { model: Chair },
+        {
+          model: SessionMedication,
+          include: [Medication]
+        }
+      ],
+      order: [['horaInicio', 'DESC']]
+    });
+
+    const history = sessions.map(session => {
+      const duracionMinutos = session.horaFin
+        ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 60000)
+        : null;
+
+      return {
+        sessionId: session.id,
+        estado: session.estado,
+        silla: session.Chair?.nombre,
+        horaInicio: session.horaInicio,
+        horaFin: session.horaFin,
+        duracionMinutos,
+        medicamentos: session.SessionMedications.map(sm => ({
+          nombre: sm.Medication.nombre,
+          cantidad: sm.cantidadAdministrada
+        }))
+      };
+    });
+
+    return success(res, history);
+
+  } catch (err) {
+    console.error('❌ Error obteniendo historial clínico:', err);
+    return error(res, 'Error obteniendo historial clínico', 'PATIENT_HISTORY_FAILED', 500);
+  }
+});
+
+
+// ==================== HISTORIAL POR SILLÓN ====================
+
+app.get('/api/chairs/:id/history', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const sessions = await ChairSession.findAll({
+      where: { chairId: id },
+      include: [
+        { model: Patient },
+        {
+          model: SessionMedication,
+          include: [Medication]
+        }
+      ],
+      order: [['horaInicio', 'DESC']]
+    });
+
+    const history = sessions.map(session => {
+      const duracionMinutos = session.horaFin
+        ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 60000)
+        : null;
+
+      return {
+        sessionId: session.id,
+        estado: session.estado,
+        paciente: session.Patient?.nombreCompleto,
+        horaInicio: session.horaInicio,
+        horaFin: session.horaFin,
+        duracionMinutos,
+        medicamentos: session.SessionMedications.map(sm => ({
+          nombre: sm.Medication.nombre,
+          cantidad: sm.cantidadAdministrada
+        }))
+      };
+    });
+
+    return success(res, history);
+
+  } catch (err) {
+    console.error('❌ Error obteniendo historial del sillón:', err);
+    return error(res, 'Error obteniendo historial del sillón', 'CHAIR_HISTORY_FAILED', 500);
+  }
+});
+
 
 
 // ==================== ERROR HANDLING ====================

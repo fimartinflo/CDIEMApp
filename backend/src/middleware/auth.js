@@ -1,32 +1,27 @@
 const jwt = require('jsonwebtoken');
+const { error } = require('../utils/response');
 
-const authMiddleware = (req, res, next) => {
+const SECRET = process.env.JWT_SECRET || 'cdiem_secret_dev';
+
+module.exports = function (req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return error(res, 'Token requerido', 'TOKEN_REQUIRED', 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  if (!token) {
+    return error(res, 'Token inválido', 'TOKEN_INVALID', 401);
+  }
+
   try {
-    // Obtener token del header
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Acceso denegado. No hay token proporcionado.'
-      });
-    }
+    const decoded = jwt.verify(token, SECRET);
 
-    const token = authHeader.split(' ')[1];
-    
-    // Verificar token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Agregar usuario al request
     req.user = decoded;
-    
     next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Token inválido o expirado.'
-    });
+  } catch (err) {
+    return error(res, 'Token expirado o inválido', 'TOKEN_EXPIRED', 401);
   }
 };
-
-module.exports = { authMiddleware };
