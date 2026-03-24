@@ -21,7 +21,14 @@ import {
   Select,
   FormControl,
   InputLabel,
-  CircularProgress
+  CircularProgress,
+  Divider,
+  Tooltip,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import {
   Chair as ChairIcon,
@@ -32,60 +39,54 @@ import {
   Edit as EditIcon,
   CheckCircle as AvailableIcon,
   Block as OccupiedIcon,
-  Build as MaintenanceIcon
+  Build as MaintenanceIcon,
+  MedicalServices as MedIcon
 } from '@mui/icons-material';
 import chairService from '../services/chairService';
 import patientService from '../services/patientService';
+import inventoryService from '../services/inventoryService';
+import api from '../services/api';
 
 const Chairs = () => {
   const [chairs, setChairs] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Diálogos
   const [openDialog, setOpenDialog] = useState(false);
   const [openAssignDialog, setOpenAssignDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  
-  // Estados para formularios
-  const [selectedChair, setSelectedChair] = useState(null);
-  const [newChair, setNewChair] = useState({
-    numero: '',
-    nombre: '',
-    ubicacion: '',
-    estado: 'disponible'
-  });
-  const [editChair, setEditChair] = useState({
-    id: '',
-    numero: '',
-    nombre: '',
-    ubicacion: '',
-    estado: 'disponible'
-  });
-  const [assignData, setAssignData] = useState({
-    pacienteId: '',
-    medicamentos: ''
-  });
+  const [openMedDialog, setOpenMedDialog] = useState(false);
 
-  // Cargar sillones y pacientes
+  // Formularios
+  const [selectedChair, setSelectedChair] = useState(null);
+  const [newChair, setNewChair] = useState({ numero: '', nombre: '', ubicacion: '', estado: 'disponible' });
+  const [editChair, setEditChair] = useState({ id: '', numero: '', nombre: '', ubicacion: '', estado: 'disponible' });
+
+  // Asignación: paciente seleccionado + lista de medicamentos
+  const [assignPatientId, setAssignPatientId] = useState('');
+  const [assignMeds, setAssignMeds] = useState([]); // [{medicationId, nombre, cantidad, maxStock}]
+
+  // Agregar medicamento a sesión activa
+  const [addMedId, setAddMedId] = useState('');
+  const [addMedQty, setAddMedQty] = useState(1);
+
   useEffect(() => {
     loadChairs();
     loadPatients();
+    loadInventory();
   }, []);
 
   const loadChairs = async () => {
     setLoading(true);
     try {
-      console.log('Cargando sillones...');
       const result = await chairService.getChairs();
-      console.log('Resultado de sillones:', result);
       setChairs(result.data || []);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Error al cargar sillones';
-      setError(errorMsg);
-      console.error('Error detallado:', err);
+      setError(err.response?.data?.message || 'Error al cargar sillones');
     } finally {
       setLoading(false);
     }
@@ -93,25 +94,31 @@ const Chairs = () => {
 
   const loadPatients = async () => {
     try {
-      const result = await patientService.getPatients(1, 100);
+      const result = await patientService.getPatients(1, 200);
       setPatients(result.data || []);
     } catch (err) {
       console.error('Error al cargar pacientes:', err);
     }
   };
 
-  // Abrir diálogo para crear sillón
-  const handleCreateOpen = () => {
-    setNewChair({
-      numero: '',
-      nombre: '',
-      ubicacion: '',
-      estado: 'disponible'
-    });
-    setOpenDialog(true);
+  const loadInventory = async () => {
+    try {
+      const result = await inventoryService.getItems();
+      // Solo medicamentos activos con stock disponible
+      setInventory((result.data || []).filter(m => m.activo !== false && m.cantidad > 0));
+    } catch (err) {
+      console.error('Error al cargar inventario:', err);
+    }
   };
 
-  // Crear sillón
+  // Solo pacientes ACTIVOS para asignar
+  const activePatients = patients.filter(p => p.estado === 'activo');
+
+  // Medicamentos disponibles que no están ya seleccionados en assignMeds
+  const availableMeds = inventory.filter(m => !assignMeds.find(am => am.medicationId === m.id));
+
+  // ==================== CRUD Sillones ====================
+
   const handleCreate = async () => {
     try {
       await chairService.createChair(newChair);
@@ -119,24 +126,10 @@ const Chairs = () => {
       setOpenDialog(false);
       loadChairs();
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Error al crear sillón';
-      setError(errorMsg);
+      setError(err.response?.data?.message || 'Error al crear sillón');
     }
   };
 
-  // Abrir diálogo para editar sillón
-  const handleEditOpen = (chair) => {
-    setEditChair({
-      id: chair.id,
-      numero: chair.numero,
-      nombre: chair.nombre,
-      ubicacion: chair.ubicacion,
-      estado: chair.estado
-    });
-    setOpenEditDialog(true);
-  };
-
-  // Actualizar sillón
   const handleEdit = async () => {
     try {
       await chairService.updateChair(editChair.id, editChair);
@@ -144,12 +137,10 @@ const Chairs = () => {
       setOpenEditDialog(false);
       loadChairs();
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Error al actualizar sillón';
-      setError(errorMsg);
+      setError(err.response?.data?.message || 'Error al actualizar sillón');
     }
   };
 
-  // Eliminar sillón
   const handleDelete = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este sillón?')) {
       try {
@@ -157,40 +148,109 @@ const Chairs = () => {
         setSuccess('Sillón eliminado exitosamente');
         loadChairs();
       } catch (err) {
-        const errorMsg = err.response?.data?.message || 'Error al eliminar sillón';
-        setError(errorMsg);
+        setError(err.response?.data?.message || 'Error al eliminar sillón');
       }
     }
   };
 
-  // Abrir diálogo para asignar paciente
+  // ==================== Asignación de paciente ====================
+
   const handleAssignOpen = (chair) => {
     setSelectedChair(chair);
-    setAssignData({
-      pacienteId: '',
-      medicamentos: ''
-    });
+    setAssignPatientId('');
+    setAssignMeds([]);
+    loadInventory(); // Refrescar stock antes de abrir
     setOpenAssignDialog(true);
   };
 
-  // Asignar paciente a sillón
+  const addMedRow = (medId) => {
+    if (!medId) return;
+    const med = inventory.find(m => m.id === parseInt(medId));
+    if (!med) return;
+    setAssignMeds(prev => [...prev, {
+      medicationId: med.id,
+      nombre: med.nombre,
+      cantidad: 1,
+      maxStock: med.cantidad
+    }]);
+  };
+
+  const updateMedQty = (idx, qty) => {
+    setAssignMeds(prev => prev.map((m, i) => {
+      if (i !== idx) return m;
+      const clamped = Math.max(1, Math.min(parseInt(qty) || 1, m.maxStock));
+      return { ...m, cantidad: clamped };
+    }));
+  };
+
+  const removeMedRow = (idx) => {
+    setAssignMeds(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleAssign = async () => {
+    if (!assignPatientId) {
+      setError('Debe seleccionar un paciente');
+      return;
+    }
     try {
-      await chairService.assignPatient(
-        selectedChair.id,
-        assignData.pacienteId,
-        assignData.medicamentos ? [assignData.medicamentos] : []
-      );
+      // 1. Asignar paciente al sillón
+      const assignRes = await chairService.assignPatient(selectedChair.id, assignPatientId, []);
+      const sessionId = assignRes.data?.session?.id;
+
+      // 2. Registrar medicamentos si hay seleccionados
+      if (assignMeds.length > 0 && sessionId) {
+        for (const med of assignMeds) {
+          try {
+            await api.post(`/chairs/${selectedChair.id}/medications`, {
+              medicationId: med.medicationId,
+              cantidad: med.cantidad
+            });
+          } catch (medErr) {
+            console.error(`Error al asignar medicamento ${med.nombre}:`, medErr.response?.data?.message);
+          }
+        }
+      }
+
       setSuccess('Paciente asignado exitosamente');
       setOpenAssignDialog(false);
       loadChairs();
+      loadInventory();
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Error al asignar paciente';
-      setError(errorMsg);
+      setError(err.response?.data?.message || 'Error al asignar paciente');
     }
   };
 
-  // Liberar sillón
+  // ==================== Agregar medicamento a sesión activa ====================
+
+  const handleAddMedOpen = (chair) => {
+    setSelectedChair(chair);
+    setAddMedId('');
+    setAddMedQty(1);
+    loadInventory();
+    setOpenMedDialog(true);
+  };
+
+  const handleAddMed = async () => {
+    if (!addMedId) {
+      setError('Seleccione un medicamento');
+      return;
+    }
+    try {
+      await api.post(`/chairs/${selectedChair.id}/medications`, {
+        medicationId: parseInt(addMedId),
+        cantidad: addMedQty
+      });
+      setSuccess('Medicamento administrado exitosamente');
+      setOpenMedDialog(false);
+      loadChairs();
+      loadInventory();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al administrar medicamento');
+    }
+  };
+
+  // ==================== Liberar sillón ====================
+
   const handleRelease = async (id) => {
     if (window.confirm('¿Está seguro de liberar este sillón?')) {
       try {
@@ -198,13 +258,13 @@ const Chairs = () => {
         setSuccess('Sillón liberado exitosamente');
         loadChairs();
       } catch (err) {
-        const errorMsg = err.response?.data?.message || 'Error al liberar sillón';
-        setError(errorMsg);
+        setError(err.response?.data?.message || 'Error al liberar sillón');
       }
     }
   };
 
-  // Obtener color según estado
+  // ==================== Helpers visuales ====================
+
   const getEstadoColor = (estado) => {
     switch (estado) {
       case 'disponible': return 'success';
@@ -214,7 +274,6 @@ const Chairs = () => {
     }
   };
 
-  // Obtener icono según estado
   const getEstadoIcon = (estado) => {
     switch (estado) {
       case 'disponible': return <AvailableIcon />;
@@ -224,54 +283,40 @@ const Chairs = () => {
     }
   };
 
-  // Formatear tiempo
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    const date = new Date(timeString);
-    return date.toLocaleTimeString('es-CL', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return new Date(timeString).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Calcular duración
   const calculateDuration = (horaInicio) => {
     if (!horaInicio) return '';
-    const inicio = new Date(horaInicio);
-    const ahora = new Date();
-    const minutos = Math.round((ahora - inicio) / (1000 * 60));
+    const minutos = Math.round((new Date() - new Date(horaInicio)) / 60000);
     return `${minutos} min`;
   };
 
   return (
     <Container maxWidth="xl">
-      {/* Encabezado */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Gestión de Sillones Oncológicos
-        </Typography>
+        <Typography variant="h4" gutterBottom>Gestión de Sillones Oncológicos</Typography>
         <Typography variant="body1" color="text.secondary">
-          Control de sillones en tiempo real - Centro CDIEM
+          Control de sillones en tiempo real — Centro CDIEM
         </Typography>
       </Box>
 
-      {/* Barra de herramientas */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">
             Sillones Activos: {chairs.filter(c => c.activo !== false).length}
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateOpen}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+            setNewChair({ numero: '', nombre: '', ubicacion: '', estado: 'disponible' });
+            setOpenDialog(true);
+          }}>
             Nuevo Sillón
           </Button>
         </Box>
       </Paper>
 
-      {/* Vista de sillones */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
@@ -289,23 +334,18 @@ const Chairs = () => {
                     flexDirection: 'column',
                     border: `2px solid ${
                       chair.estado === 'disponible' ? '#4caf50' :
-                      chair.estado === 'ocupado' ? '#f44336' :
-                      '#ff9800'
+                      chair.estado === 'ocupado' ? '#f44336' : '#ff9800'
                     }`,
-                    transition: 'transform 0.3s',
-                    '&:hover': {
-                      transform: 'scale(1.02)'
-                    }
+                    transition: 'transform 0.2s',
+                    '&:hover': { transform: 'scale(1.02)' }
                   }}
                 >
                   <CardContent sx={{ flexGrow: 1 }}>
-                    {/* Encabezado del sillón */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    {/* Cabecera */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <ChairIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6">
-                          {chair.numero}
-                        </Typography>
+                        <Typography variant="h6">{chair.numero}</Typography>
                       </Box>
                       <Chip
                         icon={getEstadoIcon(chair.estado)}
@@ -315,52 +355,39 @@ const Chairs = () => {
                       />
                     </Box>
 
-                    {/* Información del sillón */}
-                    <Typography variant="body1" gutterBottom>
-                      {chair.nombre}
-                    </Typography>
-                    
+                    <Typography variant="body1" gutterBottom>{chair.nombre}</Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       📍 {chair.ubicacion || 'Sin ubicación'}
                     </Typography>
 
-                    {/* Información del paciente si está ocupado */}
+                    {/* Paciente actual si está ocupado */}
                     {chair.estado === 'ocupado' && chair.pacienteActual && (
-                      <Paper sx={{ p: 2, mt: 2, bgcolor: '#ffebee' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <PersonIcon sx={{ mr: 1, color: 'error.main' }} />
-                          <Typography variant="subtitle2">
-                            Paciente: {chair.pacienteActual}
+                      <Paper sx={{ p: 1.5, mt: 1, bgcolor: '#fff3e0' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                          <PersonIcon sx={{ mr: 0.5, fontSize: 16, color: 'warning.main' }} />
+                          <Typography variant="body2" fontWeight="medium">
+                            {chair.pacienteActual}
                           </Typography>
                         </Box>
-                        
                         {chair.horaInicio && (
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <TimeIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
+                              <TimeIcon sx={{ fontSize: 12, mr: 0.5, color: 'text.secondary' }} />
                               <Typography variant="caption">
                                 Inicio: {formatTime(chair.horaInicio)}
                               </Typography>
                             </Box>
-                            <Typography variant="caption" color="error.main">
+                            <Typography variant="caption" color="warning.main" fontWeight="bold">
                               {calculateDuration(chair.horaInicio)}
                             </Typography>
                           </Box>
-                        )}
-                        
-                        {chair.medicamentosAdministrados && chair.medicamentosAdministrados.length > 0 && (
-                          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                            💊 {Array.isArray(chair.medicamentosAdministrados) 
-                              ? chair.medicamentosAdministrados.join(', ')
-                              : chair.medicamentosAdministrados}
-                          </Typography>
                         )}
                       </Paper>
                     )}
 
                     {/* Botones de acción */}
-                    <Box sx={{ mt: 3, display: 'flex', gap: 1 }}>
-                      {chair.estado === 'disponible' ? (
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {chair.estado === 'disponible' && (
                         <Button
                           variant="contained"
                           color="primary"
@@ -370,140 +397,96 @@ const Chairs = () => {
                         >
                           Asignar Paciente
                         </Button>
-                      ) : chair.estado === 'ocupado' ? (
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          fullWidth
-                          onClick={() => handleRelease(chair.id)}
-                        >
-                          Liberar Sillón
-                        </Button>
-                      ) : null}
-                      
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditOpen(chair)}
-                        color="warning"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(chair.id)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      )}
+                      {chair.estado === 'ocupado' && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            size="small"
+                            startIcon={<MedIcon />}
+                            sx={{ flex: 1 }}
+                            onClick={() => handleAddMedOpen(chair)}
+                          >
+                            + Medicamento
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            sx={{ flex: 1 }}
+                            onClick={() => handleRelease(chair.id)}
+                          >
+                            Liberar
+                          </Button>
+                        </>
+                      )}
+                      <Tooltip title="Editar sillón">
+                        <IconButton size="small" color="warning" onClick={() => {
+                          setEditChair({
+                            id: chair.id, numero: chair.numero,
+                            nombre: chair.nombre, ubicacion: chair.ubicacion, estado: chair.estado
+                          });
+                          setOpenEditDialog(true);
+                        }}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar sillón">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(chair.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </CardContent>
                 </Card>
               </Grid>
-            ))
-          }
+            ))}
         </Grid>
       )}
 
-      {/* Estadísticas */}
+      {/* Resumen de estado */}
       <Paper sx={{ p: 3, mt: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Resumen de Estado
-        </Typography>
+        <Typography variant="h6" gutterBottom>Resumen de Estado</Typography>
         <Grid container spacing={2}>
-          <Grid item xs={6} sm={3}>
-            <Card variant="outlined">
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="text.secondary" gutterBottom>
-                  Total
-                </Typography>
-                <Typography variant="h4">
-                  {chairs.filter(c => c.activo !== false).length}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={6} sm={3}>
-            <Card variant="outlined">
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="success.main" gutterBottom>
-                  Disponibles
-                </Typography>
-                <Typography variant="h4" color="success.main">
-                  {chairs.filter(c => c.estado === 'disponible' && c.activo !== false).length}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={6} sm={3}>
-            <Card variant="outlined">
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="error.main" gutterBottom>
-                  Ocupados
-                </Typography>
-                <Typography variant="h4" color="error.main">
-                  {chairs.filter(c => c.estado === 'ocupado' && c.activo !== false).length}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={6} sm={3}>
-            <Card variant="outlined">
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="warning.main" gutterBottom>
-                  Mantenimiento
-                </Typography>
-                <Typography variant="h4" color="warning.main">
-                  {chairs.filter(c => c.estado === 'mantenimiento' && c.activo !== false).length}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          {[
+            { label: 'Total', value: chairs.filter(c => c.activo !== false).length, color: 'text.primary' },
+            { label: 'Disponibles', value: chairs.filter(c => c.estado === 'disponible' && c.activo !== false).length, color: 'success.main' },
+            { label: 'Ocupados', value: chairs.filter(c => c.estado === 'ocupado' && c.activo !== false).length, color: 'error.main' },
+            { label: 'Mantenimiento', value: chairs.filter(c => c.estado === 'mantenimiento' && c.activo !== false).length, color: 'warning.main' },
+          ].map(({ label, value, color }) => (
+            <Grid item xs={6} sm={3} key={label}>
+              <Card variant="outlined">
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography color={color} gutterBottom variant="body2">{label}</Typography>
+                  <Typography variant="h4" color={color}>{value}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
         </Grid>
       </Paper>
 
-      {/* Diálogo: Crear sillón */}
+      {/* ==================== DIÁLOGOS ==================== */}
+
+      {/* Crear sillón */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Nuevo Sillón Oncológico</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}>
-            <TextField
-              label="Número del Sillón *"
-              value={newChair.numero}
-              onChange={(e) => setNewChair({...newChair, numero: e.target.value})}
-              fullWidth
-              required
-              helperText="Ej: S1, S2, S3..."
-            />
-            
-            <TextField
-              label="Nombre *"
-              value={newChair.nombre}
-              onChange={(e) => setNewChair({...newChair, nombre: e.target.value})}
-              fullWidth
-              required
-              helperText="Ej: Sillón de Quimioterapia 1"
-            />
-            
-            <TextField
-              label="Ubicación"
-              value={newChair.ubicacion}
-              onChange={(e) => setNewChair({...newChair, ubicacion: e.target.value})}
-              fullWidth
-              helperText="Ej: Sala A, Área de Tratamiento"
-            />
-            
+            <TextField label="Número *" value={newChair.numero}
+              onChange={(e) => setNewChair({ ...newChair, numero: e.target.value })}
+              fullWidth helperText="Ej: S1, S2..." />
+            <TextField label="Nombre *" value={newChair.nombre}
+              onChange={(e) => setNewChair({ ...newChair, nombre: e.target.value })}
+              fullWidth helperText="Ej: Sillón de Quimioterapia 1" />
+            <TextField label="Ubicación" value={newChair.ubicacion}
+              onChange={(e) => setNewChair({ ...newChair, ubicacion: e.target.value })}
+              fullWidth helperText="Ej: Sala A" />
             <FormControl fullWidth>
-              <InputLabel>Estado Inicial *</InputLabel>
-              <Select
-                value={newChair.estado}
-                label="Estado Inicial *"
-                onChange={(e) => setNewChair({...newChair, estado: e.target.value})}
-              >
+              <InputLabel>Estado Inicial</InputLabel>
+              <Select value={newChair.estado} label="Estado Inicial"
+                onChange={(e) => setNewChair({ ...newChair, estado: e.target.value })}>
                 <MenuItem value="disponible">Disponible</MenuItem>
                 <MenuItem value="mantenimiento">Mantenimiento</MenuItem>
               </Select>
@@ -516,114 +499,197 @@ const Chairs = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Diálogo: Editar sillón */}
+      {/* Editar sillón */}
       <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
         <DialogTitle>Editar Sillón {editChair.numero}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}>
-            <TextField
-              label="Número del Sillón *"
-              value={editChair.numero}
-              onChange={(e) => setEditChair({...editChair, numero: e.target.value})}
-              fullWidth
-              required
-            />
-            
-            <TextField
-              label="Nombre *"
-              value={editChair.nombre}
-              onChange={(e) => setEditChair({...editChair, nombre: e.target.value})}
-              fullWidth
-              required
-            />
-            
-            <TextField
-              label="Ubicación"
-              value={editChair.ubicacion}
-              onChange={(e) => setEditChair({...editChair, ubicacion: e.target.value})}
-              fullWidth
-            />
-            
+            <TextField label="Número *" value={editChair.numero}
+              onChange={(e) => setEditChair({ ...editChair, numero: e.target.value })} fullWidth />
+            <TextField label="Nombre *" value={editChair.nombre}
+              onChange={(e) => setEditChair({ ...editChair, nombre: e.target.value })} fullWidth />
+            <TextField label="Ubicación" value={editChair.ubicacion}
+              onChange={(e) => setEditChair({ ...editChair, ubicacion: e.target.value })} fullWidth />
             <FormControl fullWidth>
               <InputLabel>Estado</InputLabel>
-              <Select
-                value={editChair.estado}
-                label="Estado"
-                onChange={(e) => setEditChair({...editChair, estado: e.target.value})}
-              >
+              <Select value={editChair.estado} label="Estado"
+                onChange={(e) => setEditChair({ ...editChair, estado: e.target.value })}>
                 <MenuItem value="disponible">Disponible</MenuItem>
                 <MenuItem value="ocupado">Ocupado</MenuItem>
                 <MenuItem value="mantenimiento">Mantenimiento</MenuItem>
-                <MenuItem value="deshabilitado">Deshabilitado</MenuItem>
               </Select>
             </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenEditDialog(false)}>Cancelar</Button>
-          <Button onClick={handleEdit} variant="contained">Actualizar Sillón</Button>
+          <Button onClick={handleEdit} variant="contained">Actualizar</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Diálogo: Asignar paciente */}
-      <Dialog open={openAssignDialog} onClose={() => setOpenAssignDialog(false)}>
-        <DialogTitle>Asignar Paciente a Sillón {selectedChair?.numero}</DialogTitle>
+      {/* Asignar paciente + medicamentos */}
+      <Dialog open={openAssignDialog} onClose={() => setOpenAssignDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Asignar Paciente — Sillón {selectedChair?.numero}</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Selector de paciente */}
             <FormControl fullWidth required>
-              <InputLabel>Seleccionar Paciente *</InputLabel>
+              <InputLabel>Paciente *</InputLabel>
               <Select
-                value={assignData.pacienteId}
-                label="Seleccionar Paciente *"
-                onChange={(e) => setAssignData({...assignData, pacienteId: e.target.value})}
+                value={assignPatientId}
+                label="Paciente *"
+                onChange={(e) => setAssignPatientId(e.target.value)}
               >
-                {patients
-                  .filter(p => p.estado === 'activo' || p.estado === 'en_tratamiento')
-                  .map((patient) => (
-                    <MenuItem key={patient.id} value={patient.id}>
-                      {patient.nombreCompleto} - {
-                        patient.tipoIdentificacion === 'rut' 
-                          ? patientService.formatRUT(patient.rut)
-                          : patient.pasaporte
-                      }
-                    </MenuItem>
-                  ))
-                }
+                {activePatients.length === 0 ? (
+                  <MenuItem disabled value="">Sin pacientes activos disponibles</MenuItem>
+                ) : activePatients.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.nombreCompleto} — {
+                      p.tipoIdentificacion === 'rut'
+                        ? patientService.formatRUT(p.rut)
+                        : p.pasaporte
+                    }
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
-            
-            <TextField
-              label="Medicamentos a Administrar"
-              value={assignData.medicamentos}
-              onChange={(e) => setAssignData({...assignData, medicamentos: e.target.value})}
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Ej: 
-• Medicamento A - 100mg
-• Medicamento B - 50mg cada 8 horas
-• Suero fisiológico - 500ml"
-              helperText="Liste los medicamentos que se administrarán en este sillón"
-            />
+
+            {/* Medicamentos */}
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle2">
+                  Medicamentos a Administrar
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Agregar medicamento</InputLabel>
+                  <Select
+                    value=""
+                    label="Agregar medicamento"
+                    onChange={(e) => { addMedRow(e.target.value); }}
+                    disabled={availableMeds.length === 0}
+                  >
+                    {availableMeds.map(m => (
+                      <MenuItem key={m.id} value={m.id}>
+                        {m.nombre} (stock: {m.cantidad} {m.unidad})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {assignMeds.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  Sin medicamentos seleccionados (opcional)
+                </Typography>
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Medicamento</TableCell>
+                      <TableCell align="center">Cantidad</TableCell>
+                      <TableCell align="center">Quitar</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {assignMeds.map((med, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>
+                          <Typography variant="body2">{med.nombre}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Stock disponible: {med.maxStock}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={med.cantidad}
+                            onChange={(e) => updateMedQty(idx, e.target.value)}
+                            inputProps={{ min: 1, max: med.maxStock }}
+                            sx={{ width: 70 }}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" color="error" onClick={() => removeMedRow(idx)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenAssignDialog(false)}>Cancelar</Button>
-          <Button onClick={handleAssign} variant="contained">Asignar Paciente</Button>
+          <Button onClick={handleAssign} variant="contained" disabled={!assignPatientId}>
+            Asignar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Agregar medicamento a sesión activa */}
+      <Dialog open={openMedDialog} onClose={() => setOpenMedDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Administrar Medicamento — Sillón {selectedChair?.numero}
+          {selectedChair?.pacienteActual && (
+            <Typography variant="body2" color="text.secondary">
+              Paciente: {selectedChair.pacienteActual}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Medicamento *</InputLabel>
+              <Select
+                value={addMedId}
+                label="Medicamento *"
+                onChange={(e) => { setAddMedId(e.target.value); setAddMedQty(1); }}
+              >
+                {inventory.length === 0 ? (
+                  <MenuItem disabled value="">Sin medicamentos con stock disponible</MenuItem>
+                ) : inventory.map(m => (
+                  <MenuItem key={m.id} value={m.id}>
+                    {m.nombre} — Stock: {m.cantidad} {m.unidad}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Cantidad *"
+              type="number"
+              value={addMedQty}
+              onChange={(e) => setAddMedQty(Math.max(1, parseInt(e.target.value) || 1))}
+              inputProps={{
+                min: 1,
+                max: inventory.find(m => m.id === parseInt(addMedId))?.cantidad || 9999
+              }}
+              fullWidth
+              helperText={
+                addMedId
+                  ? `Stock disponible: ${inventory.find(m => m.id === parseInt(addMedId))?.cantidad ?? '—'}`
+                  : 'Seleccione primero un medicamento'
+              }
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenMedDialog(false)}>Cancelar</Button>
+          <Button onClick={handleAddMed} variant="contained" disabled={!addMedId}>
+            Administrar
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Notificaciones */}
       <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError('')}>
-        <Alert severity="error" onClose={() => setError('')}>
-          {error}
-        </Alert>
+        <Alert severity="error" onClose={() => setError('')}>{error}</Alert>
       </Snackbar>
-      
       <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
-        <Alert severity="success" onClose={() => setSuccess('')}>
-          {success}
-        </Alert>
+        <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>
       </Snackbar>
     </Container>
   );
