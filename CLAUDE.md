@@ -51,26 +51,27 @@ CDIEMApp/
 │   │   │   ├── SessionMedication.js
 │   │   │   ├── User.js
 │   │   │   ├── Visit.js
-│   │   │   ├── Inventory.js
-│   │   │   ├── index.js         # Importa todos los modelos
-│   │   │   └── associations.js  # Relaciones entre modelos
+│   │   │   ├── Inventory.js     # Modelo legacy, actualmente no usado
+│   │   │   ├── index.js         # Importa todos los modelos + define asociaciones
+│   │   │   └── associations.js  # Obsoleto (asociaciones unificadas en index.js)
 │   │   ├── controllers/
 │   │   │   ├── patientController.js
-│   │   │   ├── chairController.js
+│   │   │   ├── chairController.js   # Solo CRUD (no sesiones)
 │   │   │   ├── authController.js
-│   │   │   └── inventoryController.js
+│   │   │   └── inventoryController.js  # Usa modelo Medication
 │   │   ├── routes/
 │   │   │   ├── patientRoutes.js
-│   │   │   ├── chairRoutes.js
+│   │   │   ├── chairRoutes.js       # Solo CRUD (POST/, PUT/:id, DELETE/:id, POST/:id/reset)
 │   │   │   ├── inventoryRoutes.js
 │   │   │   └── authRoutes.js
 │   │   ├── middleware/
-│   │   │   ├── auth.js          # Verificación JWT
+│   │   │   ├── auth.js          # Verificación JWT (default + named export)
 │   │   │   ├── roles.js         # Control de acceso por rol
 │   │   │   └── errorHandler.js  # Manejo centralizado de errores
 │   │   └── utils/
-│   │       └── response.js      # Utilidades de respuesta (success/error)
-│   ├── init-db.js               # Script de inicialización y seed
+│   │       └── response.js      # success(res, message, data, status) / error(res, message, code, status)
+│   ├── init-db.js               # Script de inicialización y seed (incluye usuarios)
+│   ├── test-api.js              # Suite de 67 tests de integración
 │   └── package.json
 │
 └── frontend/
@@ -79,12 +80,12 @@ CDIEMApp/
     │   ├── index.js             # Entry point React
     │   ├── components/
     │   │   ├── Layout.js        # Wrapper principal de layout
-    │   │   ├── PatientForm.js   # Formulario de pacientes
+    │   │   ├── PatientForm.js   # Formulario de pacientes (campo estado en modo edición)
     │   │   ├── PatientSearch.js # Búsqueda de pacientes
     │   │   └── PrivateRoute.js  # Protección de rutas
     │   ├── pages/
     │   │   ├── Login.js
-    │   │   ├── Dashboard.js
+    │   │   ├── Dashboard.js     # Métricas reales del backend
     │   │   ├── Patients.js
     │   │   ├── Chairs.js
     │   │   └── Inventory.js
@@ -103,17 +104,55 @@ CDIEMApp/
 
 - **Motor:** SQLite3, archivo en `database.sqlite` (raíz del repo, git-ignorado)
 - **ORM:** Sequelize
-- **Config:** `backend/src/config/database.js`
+- **Config:** `backend/src/config/database.js` — exporta instancia directamente (`module.exports = sequelize`)
 - **Init/Seed:** `node backend/init-db.js`
 
 ### Modelos y Relaciones
 
 ```
-Patient (1:N) → ChairSession
-Chair   (1:N) → ChairSession
-ChairSession (1:N) → SessionMedication
-Medication   (1:N) → SessionMedication
-Patient (1:N) → Visit
+Patient     (1:N) → ChairSession   (FK: patientId)
+Chair       (1:N) → ChairSession   (FK: chairId)
+ChairSession (1:N) → SessionMedication (FK: sessionId)
+Medication  (1:N) → SessionMedication (FK: medicationId)
+Patient     (1:N) → Visit          (FK: pacienteId, as: 'visitas')
+Chair       (1:N) → Visit          (FK: chairId, as: 'visitasSillon')
+```
+
+**IMPORTANTE:** `database.js` exporta `module.exports = sequelize` (sin objeto).
+Al importar en modelos: `const sequelize = require('../config/database')` (NO `const { sequelize } = ...`).
+
+---
+
+## Arquitectura del Backend
+
+### Patrón de rutas dual (sillones)
+
+Las rutas de sillones usan un patrón mixto intencional:
+
+- **`chairRoutes.js`** → solo CRUD básico: `POST /`, `PUT /:id`, `DELETE /:id`, `POST /:id/reset`
+- **`app.js` inline** → operaciones de sesión clínica: `GET /`, `POST /:id/assign`, `POST /:id/release`, `POST /:id/medications`, `GET /:id/medications`, `GET /live`, `GET /:id/history`
+
+Las operaciones de sesión requieren transacciones complejas con múltiples modelos (Chair + ChairSession + Patient + Medication + SessionMedication), por lo que se mantienen inline en app.js.
+
+Las demás rutas (`patientRoutes`, `inventoryRoutes`, `authRoutes`) usan el patrón controller estándar.
+
+### `response.js` — Firma de funciones
+
+```js
+success(res, message, data = null, status = 200)
+error(res, message, code, status = 400)
+```
+
+**CRÍTICO:** El segundo argumento de `success()` es el mensaje (string), NO los datos.
+Correcto: `success(res, 'Operación exitosa', { ... })`
+Incorrecto: `success(res, { ... }, 'Mensaje')` ← esto manda datos en campo `message`
+
+### Auth middleware
+
+`auth.js` exporta la función de dos formas para compatibilidad:
+```js
+module.exports = authMiddleware;               // const auth = require('./middleware/auth')
+module.exports.authMiddleware = authMiddleware; // const { authMiddleware } = require('./middleware/auth')
 ```
 
 ---
@@ -123,43 +162,84 @@ Patient (1:N) → Visit
 ### Autenticación
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Login, retorna JWT |
+| POST | `/api/auth/login` | Login → retorna JWT |
+| POST | `/api/auth/register` | Registrar usuario |
+| GET | `/api/auth/profile` | Perfil del usuario autenticado |
+| PUT | `/api/auth/change-password` | Cambiar contraseña |
 
-**Usuarios de prueba hardcodeados en `app.js`:**
+**Usuarios de prueba (seed en init-db.js, contraseñas hasheadas con bcrypt):**
 - `admin` / `admin123` → rol `admin`
 - `doctor` / `doctor123` → rol `doctor`
 
-**JWT Secret:** `cdiem_secret_dev` (o variable de entorno)
-**Token:** almacenado en `localStorage` en el frontend
+**JWT Secret:** `process.env.JWT_SECRET || 'cdiem_secret_dev'`
+**Expiración:** 8 horas
+**Token:** almacenado en `localStorage['token']`
 
 ### Pacientes
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/patients` | Listar (con paginación) |
+| GET | `/api/patients` | Listar (params: page, limit, estado) |
 | POST | `/api/patients` | Crear paciente |
-| GET | `/api/patients/search` | Búsqueda/autocomplete |
+| GET | `/api/patients/:id` | Obtener por ID (incluye visitas) |
+| PUT | `/api/patients/:id` | Actualizar paciente |
+| DELETE | `/api/patients/:id` | Desactivar (borrado lógico → estado: inactivo) |
+| GET | `/api/patients/search` | Búsqueda por nombre/RUT/pasaporte |
 | POST | `/api/patients/:id/schedule-visit` | Agendar visita |
-| GET | `/api/patients/upcoming-visits` | Visitas próximas |
+| GET | `/api/patients/upcoming-visits` | Próximas visitas programadas |
+| GET | `/api/patients/:id/history` | Historial de sesiones clínicas |
 
-### Sillas
+**Respuesta paginada:** `{ success, data: [], pagination: { total, page, pages, limit } }`
+
+### Sillones
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/chairs` | Listar sillas |
-| POST | `/api/chairs` | Crear silla |
-| POST | `/api/chairs/:id/assign` | Asignar paciente |
-| POST | `/api/chairs/:id/medications` | Administrar medicamento |
-| GET | `/api/chairs/:id/medications` | Ver medicamentos de sesión |
-| POST | `/api/chairs/:id/release` | Liberar paciente |
+| GET | `/api/chairs` | Listar con estado de sesión activa |
+| POST | `/api/chairs` | Crear sillón (solo admin) |
+| PUT | `/api/chairs/:id` | Actualizar sillón |
+| DELETE | `/api/chairs/:id` | Desactivar sillón — borrado lógico (solo admin) |
+| POST | `/api/chairs/:id/reset` | Resetear a disponible (solo admin) |
+| POST | `/api/chairs/:id/assign` | Asignar paciente (crea ChairSession activa) |
+| POST | `/api/chairs/:id/release` | Liberar sillón (cierra sesión) |
+| POST | `/api/chairs/:id/medications` | Administrar medicamento (descuenta stock) |
+| GET | `/api/chairs/:id/medications` | Medicamentos administrados en sesión activa |
+| GET | `/api/chairs/live` | Estado en vivo de todos los sillones |
+| GET | `/api/chairs/:id/history` | Historial de sesiones del sillón |
+
+**Formato de respuesta `GET /api/chairs`:**
+```json
+{
+  "id": 1, "numero": "S1", "nombre": "Sillón 1", "ubicacion": "Sala A",
+  "estado": "ocupado", "activo": true,
+  "pacienteActual": "Juan Pérez o null",
+  "pacienteActualId": 5,
+  "horaInicio": "2026-03-24T10:30:00.000Z",
+  "sessionId": 12
+}
+```
+
+**Estados de sillón:** `disponible` | `ocupado` | `mantenimiento`
+**Estados de ChairSession:** `activa` | `finalizada`
 
 ### Inventario
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/inventory` | Listar medicamentos |
-| POST | `/api/inventory` | Agregar medicamento |
+| POST | `/api/inventory` | Crear medicamento |
+| GET | `/api/inventory/alerts` | Stock crítico y próximos a vencer |
+| GET | `/api/inventory/:id` | Obtener por ID |
+| PUT | `/api/inventory/:id/quantity` | Actualizar stock (entrada/salida) |
+| PUT | `/api/inventory/:id` | Actualizar medicamento |
+| DELETE | `/api/inventory/:id` | Eliminar (borrado lógico) |
+
+**NOTA:** El endpoint `/api/inventory` usa el modelo `Medication` (no `Inventory`).
+El mismo modelo `Medication` se usa en `SessionMedication` para el flujo de sillones.
 
 ### Utilidades
-- `GET /health` — Health check
-- `GET /` — Info del servidor
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/dashboard` | Métricas: pacientes, sillones, sesiones activas, medicamentos críticos |
+| GET | `/health` | Health check |
+| GET | `/` | Info del servidor |
 
 ---
 
@@ -168,15 +248,16 @@ Patient (1:N) → Visit
 ### Backend
 ```bash
 npm start        # Producción: node src/app.js
-npm run dev      # Desarrollo con nodemon
+npm run dev      # Desarrollo con nodemon (auto-restart)
 npm run init-db  # Inicializar BD con datos de prueba
+npm test         # 67 tests de integración (servidor debe estar corriendo en :3001)
 ```
 
 ### Frontend
 ```bash
+npm install      # Instalar dependencias
 npm start        # Dev server en puerto 3000
 npm run build    # Build de producción
-npm test         # Tests en modo watch
 ```
 
 ---
@@ -184,21 +265,40 @@ npm test         # Tests en modo watch
 ## Middleware y Seguridad
 
 - **auth.js** — Verifica JWT en cada request protegido
-- **roles.js** — `allowRoles(...roles)` para control de acceso
-- **errorHandler.js** — Captura errores globales
+- **roles.js** — `allowRoles(...roles)` para control de acceso por rol
+- **errorHandler.js** — Captura errores globales, registrado al final de app.js
 - **CORS** — Habilitado para `http://localhost:3000`
-- **Validación RUT** — Implementada en `patientController.js`
+- **Validación RUT** — Algoritmo módulo-11 chileno implementado en:
+  - Backend: función standalone `validateRUT()` en `patientController.js`
+  - Frontend: `patientService.validateRUT()` y `patientService.formatRUT()`
 
 ---
 
 ## Frontend — Detalles Clave
 
-- **Tema MUI** — Colores personalizados (healthcare/oncología)
-- **Interceptores Axios** (`services/api.js`):
-  - Inyección automática del JWT en headers
-  - Redirect a `/login` en errores 401
-- **PrivateRoute** — Protege rutas que requieren autenticación
-- **Date pickers** — `@mui/x-date-pickers` + `date-fns`
+### Servicios
+- **`api.js`** — Axios con baseURL `http://localhost:3001/api`
+  - Inyecta token JWT automáticamente: `Authorization: Bearer <token>`
+  - Redirige a `/login` en errores 401
+- **`patientService.js`** — CRUD + `validateRUT()` + `formatRUT()` locales
+- **`chairService.js`** — CRUD + `assignPatient(id, patientId, medicamentos)` + `releaseChair(id)`
+- **`inventoryService.js`** — CRUD completo + `updateQuantity(id, cantidad, tipo, motivo)`
+
+### Páginas
+- **`Dashboard.js`** — Consume `GET /api/dashboard`, muestra métricas en tiempo real (pacientes, sillones, sesiones, medicamentos críticos)
+- **`Patients.js`** — Búsqueda debounced (500ms), paginación, filtro por estado, agendar visita
+- **`Chairs.js`** — Cards por sillón, asignación de paciente activo, liberación, CRUD
+- **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"
+
+### Componentes
+- **`PatientForm.js`** — Formulario reutilizable (crear/editar)
+  - En modo creación: `estado: 'activo'` por defecto
+  - En modo edición: muestra selector de estado (`activo`/`inactivo`/`en_tratamiento`)
+  - Validación RUT en tiempo real con feedback visual
+- **`PrivateRoute.js`** — Protege rutas que requieren autenticación
+
+### Tema MUI
+- Colores healthcare/oncología: azul `#1976d2`, verde `#2e7d32`, naranja `#ed6c02`
 
 ---
 
@@ -210,23 +310,57 @@ npm test         # Tests en modo watch
 
 ---
 
-## Estado Actual y Próximos Pasos
+## Estado Actual
 
-### Completado
-- Estructura monorepo backend/frontend
-- Modelos Sequelize con relaciones
-- CRUD de pacientes, sillas, inventario
-- Autenticación JWT con roles
-- UI con MUI, rutas protegidas
+### Completado — P1 (Arquitectura crítica)
+- ✅ Modelos corregidos: imports de `sequelize` sin destructurar (User.js, Inventory.js, Visit.js)
+- ✅ Asociaciones unificadas en `models/index.js`
+- ✅ Auth middleware: export dual (default + named)
+- ✅ Rutas montadas en app.js con controladores reales
+- ✅ errorHandler registrado al final de app.js
+- ✅ authController usa User model con bcrypt (autenticación contra BD)
+- ✅ patientController: validateRUT como función standalone
+- ✅ inventoryController: usa modelo Medication
+- ✅ chairRoutes e inventoryRoutes implementados completamente
+- ✅ init-db.js seed con usuarios (admin, doctor) con bcrypt
+- ✅ Suite de 67 tests de integración — 67/67 pasando
 
-### Pendiente / En desarrollo
-- Completar migración de inventario a SQLite
-- Integración completa frontend-backend
-- Sistema avanzado de roles y permisos
-- Historia clínica del paciente
-- Reportes de uso y consumo
-- Tests backend (infraestructura no configurada aún)
+### Completado — P2 (Frontend conectado)
+- ✅ Frontend instalado y compilando sin errores
+- ✅ Dashboard con métricas reales del backend
+- ✅ PatientForm: campo estado editable en modo edición
+- ✅ Inventory: indicadores visuales de stock bajo y vencimiento
+- ✅ Chairs: información de sesión activa (paciente, hora inicio, duración calculada)
+- ✅ Fix argumento de `success()` en endpoint assign
+
+### Pendiente
+- Tests frontend
+- Selector de medicamentos del inventario al asignar sillón (ahora texto libre)
+- Polling en tiempo real para estado de sillones (ahora requiere recarga manual)
+- Historia clínica visual del paciente
+- UI diferenciada por rol (admin vs doctor)
+- Variables de entorno para API_URL (actualmente hardcodeado `localhost:3001`)
+- Migraciones Sequelize en lugar de `sync()`
 - Migración futura a base de datos online (PostgreSQL/MySQL)
+
+---
+
+## Flujo Clínico Principal
+
+```
+1. Login → JWT almacenado en localStorage
+2. Dashboard → métricas del sistema en tiempo real
+3. Pacientes → CRUD completo + búsqueda debounced + agendar visita
+4. Inventario → gestión de medicamentos (stock, alertas de vencimiento)
+5. Sillones:
+   a. Sillón disponible → "Asignar Paciente" → crea ChairSession activa
+      (paciente pasa a estado 'en_tratamiento')
+   b. ChairSession activa → POST /chairs/:id/medications
+      (descuenta stock del inventario, registra en SessionMedication)
+   c. "Liberar Sillón" → cierra ChairSession (estado: finalizada)
+      (paciente vuelve a 'activo', sillón vuelve a 'disponible')
+6. Historial → GET /patients/:id/history o GET /chairs/:id/history
+```
 
 ---
 
