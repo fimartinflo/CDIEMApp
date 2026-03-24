@@ -11,13 +11,30 @@ import {
   FormHelperText,
   Typography,
   Alert,
-  Divider
+  Divider,
+  Paper,
+  Chip
 } from '@mui/material';
+import {
+  Person as PersonIcon,
+  Badge as BadgeIcon,
+  ContactPhone as ContactIcon,
+  LocalHospital as MedicalIcon
+} from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import esLocale from 'date-fns/locale/es';
 import patientService from '../services/patientService';
+
+const SectionHeader = ({ icon, title }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, mt: 1 }}>
+    <Box sx={{ color: 'primary.main' }}>{icon}</Box>
+    <Typography variant="subtitle1" fontWeight="bold" color="primary.main">
+      {title}
+    </Typography>
+  </Box>
+);
 
 const PatientForm = ({ patient, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -38,7 +55,6 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [rutValid, setRutValid] = useState(true);
 
-  // Cargar datos existentes
   useEffect(() => {
     if (patient) {
       setFormData({
@@ -60,8 +76,7 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Si cambia el tipo de identificación, limpiar campos
+
     if (name === 'tipoIdentificacion') {
       setFormData(prev => ({
         ...prev,
@@ -73,19 +88,12 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
 
-    // Validar RUT en tiempo real
     if (name === 'rut' && formData.tipoIdentificacion === 'rut') {
       const isValid = patientService.validateRUT(value);
       setRutValid(isValid || value === '');
-      
-      if (value && !isValid) {
-        setErrors(prev => ({ ...prev, rut: 'RUT inválido' }));
-      } else {
-        setErrors(prev => ({ ...prev, rut: '' }));
-      }
+      setErrors(prev => ({ ...prev, rut: value && !isValid ? 'RUT inválido' : '' }));
     }
 
-    // Limpiar error
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -94,12 +102,9 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validar nombre completo
     if (!formData.nombreCompleto.trim()) {
       newErrors.nombreCompleto = 'Nombre completo es obligatorio';
     }
-
-    // Validar identificación según tipo
     if (formData.tipoIdentificacion === 'rut') {
       if (!formData.rut) {
         newErrors.rut = 'RUT es obligatorio';
@@ -113,18 +118,12 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
         newErrors.pasaporte = 'Pasaporte debe tener al menos 6 caracteres';
       }
     }
-
-    // Validar teléfono si existe
     if (formData.telefono && !/^(\+56)?[0-9]{9}$/.test(formData.telefono)) {
-      newErrors.telefono = 'Teléfono inválido. Formato: 912345678 o +56912345678';
+      newErrors.telefono = 'Formato: 912345678 o +56912345678';
     }
-
-    // Validar email si existe
     if (formData.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
       newErrors.correo = 'Correo electrónico inválido';
     }
-
-    // Validar género "otro"
     if (formData.genero === 'otro' && !formData.generoOtro.trim()) {
       newErrors.generoOtro = 'Por favor especifique el género';
     }
@@ -135,44 +134,79 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (validateForm()) {
-      // Formatear datos para enviar
-      const dataToSend = {
+      onSave({
         ...formData,
-        fechaNacimiento: formData.fechaNacimiento 
+        fechaNacimiento: formData.fechaNacimiento
           ? formData.fechaNacimiento.toISOString().split('T')[0]
           : null
-      };
-      
-      onSave(dataToSend);
+      });
     }
   };
 
   const calculateAge = () => {
     if (!formData.fechaNacimiento) return null;
     const today = new Date();
-    const birthDate = new Date(formData.fechaNacimiento);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    const birth = new Date(formData.fechaNacimiento);
+    let age = today.getFullYear() - birth.getFullYear();
+    if (today.getMonth() < birth.getMonth() ||
+      (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) {
       age--;
     }
     return age;
   };
 
+  const estadoColors = { activo: 'success', inactivo: 'error', en_tratamiento: 'warning' };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={esLocale}>
       <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          {/* Sección: Información básica */}
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>
-              Información Básica
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-          </Grid>
 
+        {/* ── Estado (solo en edición) ── */}
+        {patient && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2, mb: 3,
+              borderColor: estadoColors[formData.estado] === 'success' ? '#2e7d32' :
+                           estadoColors[formData.estado] === 'error' ? '#d32f2f' : '#ed6c02',
+              bgcolor: estadoColors[formData.estado] === 'success' ? '#f0faf0' :
+                       estadoColors[formData.estado] === 'error' ? '#fdf0f0' : '#fff8f0'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Estado actual del paciente
+                </Typography>
+                <Chip
+                  label={formData.estado.replace('_', ' ')}
+                  color={estadoColors[formData.estado]}
+                  size="medium"
+                />
+              </Box>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Cambiar estado</InputLabel>
+                <Select
+                  name="estado"
+                  value={formData.estado}
+                  onChange={handleChange}
+                  label="Cambiar estado"
+                >
+                  <MenuItem value="activo">Activo</MenuItem>
+                  <MenuItem value="inactivo">Inactivo</MenuItem>
+                  <MenuItem value="en_tratamiento">En Tratamiento</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Paper>
+        )}
+
+        {/* ── Sección: Identificación ── */}
+        <SectionHeader icon={<BadgeIcon />} title="Identificación" />
+        <Divider sx={{ mb: 2 }} />
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -185,8 +219,8 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth error={!!errors.tipoIdentificacion}>
+          <Grid item xs={12} sm={5}>
+            <FormControl fullWidth>
               <InputLabel>Tipo de Identificación *</InputLabel>
               <Select
                 name="tipoIdentificacion"
@@ -194,40 +228,32 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
                 onChange={handleChange}
                 label="Tipo de Identificación *"
               >
-                <MenuItem value="rut">RUT (Paciente Chileno)</MenuItem>
-                <MenuItem value="pasaporte">Pasaporte (Paciente Extranjero)</MenuItem>
+                <MenuItem value="rut">RUT (Chileno)</MenuItem>
+                <MenuItem value="pasaporte">Pasaporte (Extranjero)</MenuItem>
               </Select>
-              <FormHelperText>
-                {formData.tipoIdentificacion === 'rut' 
-                  ? 'Ej: 12.345.678-9' 
-                  : 'Documento de identificación extranjero'}
-              </FormHelperText>
             </FormControl>
           </Grid>
 
-          {formData.tipoIdentificacion === 'rut' ? (
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="RUT *"
-                name="rut"
-                value={formData.rut}
-                onChange={handleChange}
-                placeholder="12345678-9"
-                error={!!errors.rut || !rutValid}
-                helperText={
-                  errors.rut || 
-                  (formData.rut && !rutValid ? 'RUT inválido' : 'Formato: 12.345.678-9')
-                }
-              />
-              {formData.rut && rutValid && (
-                <Alert severity="success" sx={{ mt: 1, py: 0 }}>
-                  RUT válido: {patientService.formatRUT(formData.rut)}
-                </Alert>
-              )}
-            </Grid>
-          ) : (
-            <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={7}>
+            {formData.tipoIdentificacion === 'rut' ? (
+              <>
+                <TextField
+                  fullWidth
+                  label="RUT *"
+                  name="rut"
+                  value={formData.rut}
+                  onChange={handleChange}
+                  placeholder="12345678-9"
+                  error={!!errors.rut || !rutValid}
+                  helperText={errors.rut || (formData.rut && !rutValid ? 'RUT inválido' : 'Formato: 12.345.678-9')}
+                />
+                {formData.rut && rutValid && (
+                  <Alert severity="success" sx={{ mt: 0.5, py: 0 }}>
+                    RUT válido: {patientService.formatRUT(formData.rut)}
+                  </Alert>
+                )}
+              </>
+            ) : (
               <TextField
                 fullWidth
                 label="Pasaporte *"
@@ -237,17 +263,15 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
                 error={!!errors.pasaporte}
                 helperText={errors.pasaporte || 'Documento de identificación extranjero'}
               />
-            </Grid>
-          )}
-
-          {/* Sección: Información personal */}
-          <Grid item xs={12} sx={{ mt: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Información Personal
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
+            )}
           </Grid>
+        </Grid>
 
+        {/* ── Sección: Datos Personales ── */}
+        <SectionHeader icon={<PersonIcon />} title="Datos Personales" />
+        <Divider sx={{ mb: 2 }} />
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6}>
             <DatePicker
               label="Fecha de Nacimiento"
@@ -256,7 +280,7 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
               slotProps={{
                 textField: {
                   fullWidth: true,
-                  helperText: formData.fechaNacimiento 
+                  helperText: formData.fechaNacimiento
                     ? `Edad: ${calculateAge()} años`
                     : 'Opcional'
                 }
@@ -265,61 +289,16 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Previsión"
-              name="prevision"
-              value={formData.prevision}
-              onChange={handleChange}
-              helperText="Ej: FONASA, ISAPRE, Particular"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Teléfono"
-              name="telefono"
-              value={formData.telefono}
-              onChange={handleChange}
-              placeholder="912345678"
-              error={!!errors.telefono}
-              helperText={errors.telefono || 'Formato chileno: 912345678 o +56912345678'}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Correo Electrónico"
-              name="correo"
-              type="email"
-              value={formData.correo}
-              onChange={handleChange}
-              error={!!errors.correo}
-              helperText={errors.correo}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Género</InputLabel>
-              <Select
-                name="genero"
-                value={formData.genero}
-                onChange={handleChange}
-                label="Género"
-              >
+              <Select name="genero" value={formData.genero} onChange={handleChange} label="Género">
                 <MenuItem value="">No especificar</MenuItem>
                 <MenuItem value="masculino">Masculino</MenuItem>
                 <MenuItem value="femenino">Femenino</MenuItem>
                 <MenuItem value="otro">Otro</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-
-          {formData.genero === 'otro' && (
-            <Grid item xs={12} sm={6}>
+            {formData.genero === 'otro' && (
               <TextField
                 fullWidth
                 label="Especifique Género"
@@ -328,9 +307,10 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
                 onChange={handleChange}
                 error={!!errors.generoOtro}
                 helperText={errors.generoOtro}
+                sx={{ mt: 1 }}
               />
-            </Grid>
-          )}
+            )}
+          </Grid>
 
           <Grid item xs={12}>
             <TextField
@@ -344,38 +324,81 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
               helperText="Calle, número, ciudad, región"
             />
           </Grid>
+        </Grid>
 
-          {/* Estado (solo en modo edición) */}
-          {patient && (
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Estado del Paciente</InputLabel>
-                <Select
-                  name="estado"
-                  value={formData.estado}
-                  onChange={handleChange}
-                  label="Estado del Paciente"
-                >
-                  <MenuItem value="activo">Activo</MenuItem>
-                  <MenuItem value="inactivo">Inactivo</MenuItem>
-                  <MenuItem value="en_tratamiento">En Tratamiento</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          )}
+        {/* ── Sección: Contacto y Previsión ── */}
+        <SectionHeader icon={<ContactIcon />} title="Contacto y Previsión" />
+        <Divider sx={{ mb: 2 }} />
 
-          {/* Botones */}
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 2 }}>
-              <Button onClick={onCancel} variant="outlined">
-                Cancelar
-              </Button>
-              <Button type="submit" variant="contained" color="primary">
-                {patient ? 'Actualizar' : 'Crear'} Paciente
-              </Button>
-            </Box>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Teléfono"
+              name="telefono"
+              value={formData.telefono}
+              onChange={handleChange}
+              placeholder="912345678"
+              error={!!errors.telefono}
+              helperText={errors.telefono || 'Ej: 912345678'}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Correo Electrónico"
+              name="correo"
+              type="email"
+              value={formData.correo}
+              onChange={handleChange}
+              error={!!errors.correo}
+              helperText={errors.correo}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Previsión"
+              name="prevision"
+              value={formData.prevision}
+              onChange={handleChange}
+              helperText="FONASA, ISAPRE, Particular..."
+            />
           </Grid>
         </Grid>
+
+        {/* ── Sección: Clínica (solo creación) ── */}
+        {!patient && (
+          <>
+            <SectionHeader icon={<MedicalIcon />} title="Información Clínica" />
+            <Divider sx={{ mb: 2 }} />
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Estado Inicial</InputLabel>
+                  <Select name="estado" value={formData.estado} onChange={handleChange} label="Estado Inicial">
+                    <MenuItem value="activo">Activo</MenuItem>
+                    <MenuItem value="inactivo">Inactivo</MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    Normalmente se crea como "Activo"
+                  </FormHelperText>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </>
+        )}
+
+        {/* ── Botones ── */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 1 }}>
+          <Button onClick={onCancel} variant="outlined">Cancelar</Button>
+          <Button type="submit" variant="contained" color="primary">
+            {patient ? 'Guardar Cambios' : 'Crear Paciente'}
+          </Button>
+        </Box>
+
       </Box>
     </LocalizationProvider>
   );
