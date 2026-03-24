@@ -345,6 +345,25 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
             />
           </Grid>
 
+          {/* Estado (solo en modo edición) */}
+          {patient && (
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Estado del Paciente</InputLabel>
+                <Select
+                  name="estado"
+                  value={formData.estado}
+                  onChange={handleChange}
+                  label="Estado del Paciente"
+                >
+                  <MenuItem value="activo">Activo</MenuItem>
+                  <MenuItem value="inactivo">Inactivo</MenuItem>
+                  <MenuItem value="en_tratamiento">En Tratamiento</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+
           {/* Botones */}
           <Grid item xs={12}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 2 }}>

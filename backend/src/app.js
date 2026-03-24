@@ -200,7 +200,7 @@ app.post('/api/chairs/:id/assign', auth, allowRoles('admin', 'doctor'), async (r
 
     await transaction.commit();
 
-    return success(res, { chair, session, patient: { id: patient.id, nombreCompleto: patient.nombreCompleto } }, 'Paciente asignado al sillón exitosamente');
+    return success(res, 'Paciente asignado al sillón exitosamente', { chair, session, patient: { id: patient.id, nombreCompleto: patient.nombreCompleto } });
 
   } catch (err) {
     await transaction.rollback();
