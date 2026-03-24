@@ -31,9 +31,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('Error en respuesta API:', error.response?.status, error.message);
-    
-    if (error.response?.status === 401) {
-      // Token expirado o inválido
+
+    // Solo redirigir a login si el 401 NO viene del propio endpoint de login
+    // (credenciales incorrectas en login deben mostrar el error, no recargar la página)
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
