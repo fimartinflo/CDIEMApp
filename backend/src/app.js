@@ -119,7 +119,7 @@ app.get('/api/chairs', auth, async (req, res) => {
       };
     });
 
-    return success(res, { items: result, total: result.length });
+    return res.json({ success: true, data: result });
   } catch (err) {
     console.error('❌ Error obteniendo sillones:', err);
     return error(res, 'Error obteniendo sillones', 'CHAIRS_FETCH_FAILED', 500);
@@ -392,15 +392,18 @@ app.get('/api/dashboard', auth, async (req, res) => {
       )
     });
 
-    return success(res, {
-      pacientes: { total: totalPacientes, activos: pacientesActivos },
-      sillones: {
-        disponibles: sillonesDisponibles,
-        ocupados: sillonesOcupados,
-        mantenimiento: sillonesMantenimiento
-      },
-      sesionesActivas,
-      medicamentosCriticos
+    return res.json({
+      success: true,
+      data: {
+        pacientes: { total: totalPacientes, activos: pacientesActivos },
+        sillones: {
+          disponibles: sillonesDisponibles,
+          ocupados: sillonesOcupados,
+          mantenimiento: sillonesMantenimiento
+        },
+        sesionesActivas,
+        medicamentosCriticos
+      }
     });
 
   } catch (err) {
@@ -447,7 +450,7 @@ app.get('/api/chairs/live', auth, async (req, res) => {
       };
     });
 
-    return success(res, result);
+    return res.json({ success: true, data: result });
 
   } catch (err) {
     console.error('❌ Error obteniendo estado en vivo:', err);
@@ -487,7 +490,7 @@ app.get('/api/patients/:id/history', auth, async (req, res) => {
       };
     });
 
-    return success(res, history);
+    return res.json({ success: true, data: history });
 
   } catch (err) {
     console.error('❌ Error obteniendo historial clínico:', err);
@@ -527,7 +530,7 @@ app.get('/api/chairs/:id/history', auth, async (req, res) => {
       };
     });
 
-    return success(res, history);
+    return res.json({ success: true, data: history });
 
   } catch (err) {
     console.error('❌ Error obteniendo historial del sillón:', err);

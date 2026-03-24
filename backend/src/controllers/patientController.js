@@ -83,17 +83,15 @@ const patientController = {
         }]
       });
 
-      // Formato data.rows + data.pagination para compatibilidad con el frontend
+      // Frontend espera data=array y pagination a nivel raíz
       res.json({
         success: true,
-        data: {
-          rows,
-          pagination: {
-            total: count,
-            page: parseInt(page),
-            pages: Math.ceil(count / limit),
-            limit: parseInt(limit)
-          }
+        data: rows,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          pages: Math.ceil(count / limit),
+          limit: parseInt(limit)
         }
       });
     } catch (error) {
