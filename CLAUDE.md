@@ -279,7 +279,8 @@ npm run build    # Build de producción
 ### Servicios
 - **`api.js`** — Axios con baseURL `http://localhost:3001/api`
   - Inyecta token JWT automáticamente: `Authorization: Bearer <token>`
-  - Redirige a `/login` en errores 401
+  - Redirige a `/login` en errores 401, **excepto** si el request es a `/auth/login`
+    (evita loop de recarga cuando las credenciales son incorrectas)
 - **`patientService.js`** — CRUD + `validateRUT()` + `formatRUT()` locales
 - **`chairService.js`** — CRUD + `assignPatient(id, patientId, medicamentos)` + `releaseChair(id)`
 - **`inventoryService.js`** — CRUD completo + `updateQuantity(id, cantidad, tipo, motivo)`
@@ -333,6 +334,10 @@ npm run build    # Build de producción
 - ✅ Chairs: información de sesión activa (paciente, hora inicio, duración calculada)
 - ✅ Fix argumento de `success()` en endpoint assign
 
+### Completado — P3 (Fixes y utilidades)
+- ✅ Fix interceptor 401 en `api.js`: ya no recarga la página al ingresar credenciales incorrectas en Login
+- ✅ Script `backend/reset-passwords.js`: recuperación de emergencia de credenciales sin borrar datos
+
 ### Pendiente
 - Tests frontend
 - Selector de medicamentos del inventario al asignar sillón (ahora texto libre)
@@ -364,4 +369,4 @@ npm run build    # Build de producción
 
 ---
 
-*Última actualización: 2026-03-24*
+*Última actualización: 2026-03-24 — Fix login interceptor 401, reset-passwords.js, README actualizado*
