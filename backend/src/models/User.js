@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
+const sequelize = require('../config/database');
 const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
@@ -74,8 +74,8 @@ User.prototype.generateToken = function() {
   const jwt = require('jsonwebtoken');
   return jwt.sign(
     { id: this.id, username: this.username, role: this.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
+    process.env.JWT_SECRET || 'cdiem_secret_dev',
+    { expiresIn: '8h' }
   );
 };
 

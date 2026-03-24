@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const Inventory = require('../models/Inventory');
+// Usa el modelo Medication que es el que integra con el flujo de sillones/sesiones
+const Inventory = require('../models/Medication');
 
 const inventoryController = {
   // Obtener todos los medicamentos
