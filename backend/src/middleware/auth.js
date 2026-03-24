@@ -3,7 +3,7 @@ const { error } = require('../utils/response');
 
 const SECRET = process.env.JWT_SECRET || 'cdiem_secret_dev';
 
-module.exports = function (req, res, next) {
+const authMiddleware = function (req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -25,3 +25,6 @@ module.exports = function (req, res, next) {
     return error(res, 'Token expirado o inválido', 'TOKEN_EXPIRED', 401);
   }
 };
+
+module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;

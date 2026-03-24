@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
+const sequelize = require('../config/database');
 
 const Visit = sequelize.define('Visit', {
   id: {
@@ -10,22 +10,16 @@ const Visit = sequelize.define('Visit', {
   pacienteId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: 'Patients',
-      key: 'id'
-    }
+    references: { model: 'Patients', key: 'id' }
   },
   chairId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'Chairs',
-      key: 'id'
-    }
+    allowNull: true, // Nullable: visitas programadas aún no tienen sillón asignado
+    references: { model: 'Chairs', key: 'id' }
   },
   numeroVisita: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    defaultValue: 1
   },
   fechaVisita: {
     type: DataTypes.DATE,
@@ -33,11 +27,11 @@ const Visit = sequelize.define('Visit', {
     defaultValue: DataTypes.NOW
   },
   tipoVisita: {
-    type: DataTypes.ENUM('consulta', 'tratamiento', 'control'),
+    type: DataTypes.STRING,
     defaultValue: 'tratamiento'
   },
   estado: {
-    type: DataTypes.ENUM('programada', 'en_progreso', 'completada', 'cancelada'),
+    type: DataTypes.STRING,
     defaultValue: 'completada'
   },
   notas: {
@@ -57,18 +51,5 @@ const Visit = sequelize.define('Visit', {
     }
   }
 });
-
-// Definir asociaciones
-Visit.associate = function(models) {
-  Visit.belongsTo(models.Patient, {
-    foreignKey: 'pacienteId',
-    as: 'paciente'
-  });
-  
-  Visit.belongsTo(models.Chair, {
-    foreignKey: 'chairId',
-    as: 'sillon'
-  });
-};
 
 module.exports = Visit;
