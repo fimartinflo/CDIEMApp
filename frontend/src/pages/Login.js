@@ -44,7 +44,8 @@ const Login = () => {
       
       if (result.success) {
         console.log('Login exitoso, redirigiendo...');
-        navigate('/dashboard');
+        const role = result.data?.user?.role;
+        navigate(role === 'administracion' ? '/reports' : '/dashboard');
       } else {
         setError(result.message || 'Error en el login');
       }
@@ -120,7 +121,7 @@ const Login = () => {
               value={formData.username}
               onChange={handleChange}
               disabled={loading}
-              helperText="Usuario: admin o doctor"
+              helperText="admin | enfermera | administracion"
             />
             
             <TextField
@@ -135,7 +136,7 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               disabled={loading}
-              helperText="Contraseña: admin123 o doctor123"
+              helperText="admin123 | enfermera123 | admin2024"
             />
             
             <Button
@@ -154,14 +155,17 @@ const Login = () => {
           </Box>
 
           <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="body2" color="textSecondary">
-              Credenciales de prueba:
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              Credenciales de acceso:
             </Typography>
             <Typography variant="caption" display="block">
-              Usuario: <strong>admin</strong> / Contraseña: <strong>admin123</strong>
+              <strong>admin</strong> / admin123 — acceso completo
             </Typography>
             <Typography variant="caption" display="block">
-              Usuario: <strong>doctor</strong> / Contraseña: <strong>doctor123</strong>
+              <strong>enfermera</strong> / enfermera123 — módulo clínico
+            </Typography>
+            <Typography variant="caption" display="block">
+              <strong>administracion</strong> / admin2024 — solo reportes
             </Typography>
           </Box>
         </Paper>

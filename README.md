@@ -29,7 +29,7 @@ Sistema de gestión clínica para un centro oncológico. Permite administrar pac
 - Administración de medicamentos por sesión (con descuento de stock automático)
 - Control de inventario con alertas de stock bajo y vencimiento
 - Dashboard con métricas del sistema en tiempo real
-- Autenticación JWT con roles (admin / doctor)
+- Autenticación JWT con roles diferenciados (admin / enfermera / administracion)
 - Persistencia local con SQLite (sin conexión a internet requerida)
 
 ---
@@ -130,10 +130,11 @@ La aplicación queda disponible en `http://localhost:3000`.
 
 ## Credenciales de Acceso
 
-| Usuario | Contraseña | Rol |
-|---------|-----------|-----|
-| `admin` | `admin123` | Administrador |
-| `doctor` | `doctor123` | Doctor |
+| Usuario | Contraseña | Rol | Acceso |
+|---------|-----------|-----|--------|
+| `admin` | `admin123` | Administrador | Acceso completo a todos los módulos |
+| `enfermera` | `enfermera123` | Enfermera | Dashboard, Pacientes, Sillones, Inventario (sin Reportes) |
+| `administracion` | `admin2024` | Administración | Solo módulo de Reportes (facturación) |
 
 > Si las credenciales dejan de funcionar (ej. BD corrompida), ejecutar:
 > ```bash
@@ -226,9 +227,15 @@ npm run build     # Build de producción
 ## Pendiente / Próximos Pasos
 
 - Tests de frontend
-- Selector de medicamentos del inventario al asignar sillón (actualmente texto libre)
-- Polling en tiempo real para estado de sillones
-- UI diferenciada por rol (admin vs doctor)
-- Variables de entorno para API_URL
 - Migraciones Sequelize en lugar de `sync()`
 - Migración futura a base de datos online (PostgreSQL/MySQL)
+
+## Implementado
+
+- ✅ Roles diferenciados: admin, enfermera, administracion
+- ✅ Menú filtrado por rol — cada usuario ve solo sus módulos
+- ✅ Rutas protegidas por rol en frontend y backend
+- ✅ Selector de medicamentos del inventario al asignar sillón
+- ✅ Polling en tiempo real para estado de sillones (cada 30s)
+- ✅ Variables de entorno para API_URL (REACT_APP_API_URL)
+- ✅ Módulo de Reportes con costos y exportación

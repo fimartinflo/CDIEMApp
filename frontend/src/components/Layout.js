@@ -15,6 +15,7 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -29,35 +30,42 @@ import authService from '../services/authService';
 
 const drawerWidth = 240;
 
+// Etiquetas de rol en español
+const roleLabels = {
+  admin: 'Administrador',
+  enfermera: 'Enfermera',
+  administracion: 'Administración',
+};
+
+// Colores de chip por rol
+const roleColors = {
+  admin: 'error',
+  enfermera: 'primary',
+  administracion: 'success',
+};
+
+// Todos los items de menú con sus roles permitidos
+const allMenuItems = [
+  { text: 'Acceso Rápido', icon: <DashboardIcon />, path: '/dashboard', roles: ['admin', 'enfermera'] },
+  { text: 'Pacientes',     icon: <People />,        path: '/patients',  roles: ['admin', 'enfermera'] },
+  { text: 'Sillones',      icon: <Chair />,          path: '/chairs',    roles: ['admin', 'enfermera'] },
+  { text: 'Inventario',    icon: <Inventory />,      path: '/inventory', roles: ['admin', 'enfermera'] },
+  { text: 'Reportes',      icon: <Assessment />,     path: '/reports',   roles: ['admin', 'administracion'] },
+];
+
 const Layout = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const user = authService.getCurrentUser();
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  // Filtrar menú según rol del usuario
+  const menuItems = allMenuItems.filter(item => item.roles.includes(user?.role));
 
-  const handleMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    authService.logout();
-  };
-
-  const menuItems = [
-    { text: 'Acceso Rápido', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Pacientes', icon: <People />, path: '/patients' },
-    { text: 'Sillones', icon: <Chair />, path: '/chairs' },
-    { text: 'Inventario', icon: <Inventory />, path: '/inventory' },
-    { text: 'Reportes', icon: <Assessment />, path: '/reports' },
-  ];
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+  const handleMenu = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
+  const handleLogout = () => authService.logout();
 
   const drawer = (
     <div>
@@ -105,7 +113,7 @@ const Layout = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Sistema de Gestión - CDIEM
+            Sistema de Gestión — CDIEM
           </Typography>
           <div>
             <IconButton
@@ -123,20 +131,21 @@ const Layout = () => {
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
               keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
               <MenuItem disabled>
-                <Typography>{user?.username} ({user?.role})</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Typography variant="body2" fontWeight="bold">{user?.username}</Typography>
+                  <Chip
+                    label={roleLabels[user?.role] || user?.role}
+                    color={roleColors[user?.role] || 'default'}
+                    size="small"
+                  />
+                </Box>
               </MenuItem>
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
@@ -148,17 +157,12 @@ const Layout = () => {
           </div>
         </Toolbar>
       </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+          ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },

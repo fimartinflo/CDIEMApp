@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/reportController');
 const auth = require('../middleware/auth');
+const allowRoles = require('../middleware/roles');
 
-// Todas las rutas de reporte requieren autenticación
-router.get('/', auth, reportController.getReport);
-router.get('/patient/:id', auth, reportController.getPatientReport);
-router.post('/email', auth, reportController.sendEmail);
+// Reportes: solo admin y administracion (rol contable)
+router.get('/', auth, allowRoles('admin', 'administracion'), reportController.getReport);
+router.get('/patient/:id', auth, allowRoles('admin', 'administracion'), reportController.getPatientReport);
+router.post('/email', auth, allowRoles('admin', 'administracion'), reportController.sendEmail);
 
 module.exports = router;

@@ -4,13 +4,14 @@ const chairController = require('../controllers/chairController');
 const authMiddleware = require('../middleware/auth');
 const allowRoles = require('../middleware/roles');
 
-// Todas las rutas de sillones requieren autenticación
+// Todas las rutas de sillones requieren auth + rol clínico
 router.use(authMiddleware);
+router.use(allowRoles('admin', 'enfermera'));
 
 // Crear sillón (solo admin)
 router.post('/', allowRoles('admin'), chairController.createChair);
 
-// Actualizar sillón
+// Actualizar sillón (admin y enfermera pueden actualizar)
 router.put('/:id', chairController.updateChair);
 
 // Eliminar sillón (borrado lógico, solo admin)

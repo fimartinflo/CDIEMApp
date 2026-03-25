@@ -24,11 +24,19 @@ const {
         isActive: true
       },
       {
-        username: 'doctor',
-        password: 'doctor123',
-        email: 'doctor@cdiem.cl',
-        fullName: 'Dr. Oncólogo Ejemplo',
-        role: 'doctor',
+        username: 'enfermera',
+        password: 'enfermera123',
+        email: 'enfermera@cdiem.cl',
+        fullName: 'Enfermera CDIEM',
+        role: 'enfermera',
+        isActive: true
+      },
+      {
+        username: 'administracion',
+        password: 'admin2024',
+        email: 'administracion@cdiem.cl',
+        fullName: 'Administración CDIEM',
+        role: 'administracion',
         isActive: true
       }
     ], { individualHooks: true }); // individualHooks activa el hash bcrypt por usuario
@@ -78,8 +86,9 @@ const {
     console.log('🎉 Base de datos inicializada correctamente');
     console.log('');
     console.log('Usuarios disponibles:');
-    console.log('  admin / admin123 (rol: admin)');
-    console.log('  doctor / doctor123 (rol: doctor)');
+    console.log('  admin         / admin123      (rol: admin — acceso completo)');
+    console.log('  enfermera     / enfermera123  (rol: enfermera — clínico, sin reportes)');
+    console.log('  administracion / admin2024    (rol: administracion — solo reportes)');
     process.exit(0);
 
   } catch (err) {

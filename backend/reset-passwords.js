@@ -1,5 +1,5 @@
 /**
- * Script de emergencia: resetea contraseñas de admin y doctor
+ * Script de emergencia: resetea contraseñas de los usuarios del sistema.
  * Sin borrar datos existentes.
  * Uso: node backend/reset-passwords.js
  */
@@ -11,11 +11,12 @@ const { sequelize, User } = require('./src/models');
     console.log('Conectado a la BD');
 
     const users = [
-      { username: 'admin',  newPassword: 'admin123' },
-      { username: 'doctor', newPassword: 'doctor123' }
+      { username: 'admin',          newPassword: 'admin123',     role: 'admin',          fullName: 'Administrador CDIEM' },
+      { username: 'enfermera',      newPassword: 'enfermera123', role: 'enfermera',      fullName: 'Enfermera CDIEM' },
+      { username: 'administracion', newPassword: 'admin2024',    role: 'administracion', fullName: 'Administración CDIEM' }
     ];
 
-    for (const { username, newPassword } of users) {
+    for (const { username, newPassword, role, fullName } of users) {
       const user = await User.findOne({ where: { username } });
       if (!user) {
         console.log(`⚠️  Usuario '${username}' no encontrado — se creará`);
@@ -23,13 +24,13 @@ const { sequelize, User } = require('./src/models');
           username,
           password: newPassword,
           email: `${username}@cdiem.cl`,
-          fullName: username === 'admin' ? 'Administrador CDIEM' : 'Dr. Oncólogo Ejemplo',
-          role: username === 'admin' ? 'admin' : 'doctor',
+          fullName,
+          role,
           isActive: true
         });
         console.log(`✅ Usuario '${username}' creado`);
       } else {
-        user.password = newPassword;       // el hook beforeUpdate hasheará esto
+        user.password = newPassword; // el hook beforeUpdate hasheará esto
         user.isActive = true;
         await user.save();
         console.log(`✅ Contraseña de '${username}' reseteada`);
@@ -37,8 +38,9 @@ const { sequelize, User } = require('./src/models');
     }
 
     console.log('\nCredenciales disponibles:');
-    console.log('  admin  / admin123  (rol: admin)');
-    console.log('  doctor / doctor123 (rol: doctor)');
+    console.log('  admin          / admin123      (rol: admin — acceso completo)');
+    console.log('  enfermera      / enfermera123  (rol: enfermera — clínico, sin reportes)');
+    console.log('  administracion / admin2024     (rol: administracion — solo reportes)');
     process.exit(0);
   } catch (err) {
     console.error('❌ Error:', err.message);
