@@ -23,6 +23,7 @@ const authRoutes = require('./routes/authRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const chairRoutes = require('./routes/chairRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // === Conectar BD ===
 (async () => {
@@ -87,6 +88,9 @@ app.use('/api/inventory', inventoryRoutes);
 // chairRoutes maneja solo CRUD: POST /, PUT /:id, DELETE /:id, POST /:id/reset
 // Las operaciones de sesión (assign, release, medications) quedan inline abajo
 app.use('/api/chairs', chairRoutes);
+
+// reportRoutes: GET /, GET /patient/:id, POST /email
+app.use('/api/reports', reportRoutes);
 
 // ==================== SILLONES: LISTADO CON ESTADO DE SESIÓN ====================
 // GET /api/chairs retorna sillones con info del paciente actual via ChairSession
@@ -313,11 +317,12 @@ app.post('/api/chairs/:id/medications', auth, allowRoles('admin', 'doctor'), asy
 
     const alertaStock = (medication.cantidad - cantidad) <= medication.minimoStock;
 
-    // Registrar administración
+    // Registrar administración (captura precio actual para facturación histórica)
     const registro = await SessionMedication.create({
       sessionId: session.id,
       medicationId: medication.id,
-      cantidadAdministrada: cantidad
+      cantidadAdministrada: cantidad,
+      precioUnitario: medication.precio || 0
     }, { transaction });
 
     await transaction.commit();

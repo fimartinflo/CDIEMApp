@@ -22,6 +22,7 @@ import {
   People,
   Chair,
   Inventory,
+  Assessment,
   Logout,
 } from '@mui/icons-material';
 import authService from '../services/authService';
@@ -55,6 +56,7 @@ const Layout = () => {
     { text: 'Pacientes', icon: <People />, path: '/patients' },
     { text: 'Sillones', icon: <Chair />, path: '/chairs' },
     { text: 'Inventario', icon: <Inventory />, path: '/inventory' },
+    { text: 'Reportes', icon: <Assessment />, path: '/reports' },
   ];
 
   const drawer = (

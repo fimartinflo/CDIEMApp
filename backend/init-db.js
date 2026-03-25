@@ -43,13 +43,14 @@ const {
     ]);
     console.log('🪑 Sillones creados');
 
-    // Crear medicamentos
+    // Crear medicamentos (precio en CLP)
     await Medication.bulkCreate([
       {
         nombre: 'Medicamento A',
         descripcion: 'Para tratamiento oncológico X',
         cantidad: 10,
         unidad: 'unidad',
+        precio: 45000,
         minimoStock: 5,
         activo: true
       },
@@ -58,6 +59,7 @@ const {
         descripcion: 'Para tratamiento oncológico Y',
         cantidad: 5,
         unidad: 'unidad',
+        precio: 78000,
         minimoStock: 10,
         activo: true
       },
@@ -66,6 +68,7 @@ const {
         descripcion: 'Solución salina 0.9%',
         cantidad: 20,
         unidad: 'bolsa',
+        precio: 3500,
         minimoStock: 5,
         activo: true
       }
