@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
 import Chairs from './pages/Chairs';
 import Inventory from './pages/Inventory';
+import Reports from './pages/Reports';
 
 // Importar componentes
 import PrivateRoute from './components/PrivateRoute';
@@ -43,6 +44,7 @@ function App() {
               <Route path="/patients" element={<Patients />} />
               <Route path="/chairs" element={<Chairs />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/reports" element={<Reports />} />
             </Route>
           </Route>
 

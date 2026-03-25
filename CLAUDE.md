@@ -277,7 +277,7 @@ npm run build    # Build de producción
 ## Frontend — Detalles Clave
 
 ### Servicios
-- **`api.js`** — Axios con baseURL `http://localhost:3001/api`
+- **`api.js`** — Axios con baseURL dinámica: `process.env.REACT_APP_API_URL || 'http://localhost:3001/api'`
   - Inyecta token JWT automáticamente: `Authorization: Bearer <token>`
   - Redirige a `/login` en errores 401, **excepto** si el request es a `/auth/login`
     (evita loop de recarga cuando las credenciales son incorrectas)
@@ -334,9 +334,30 @@ npm run build    # Build de producción
 - ✅ Chairs: información de sesión activa (paciente, hora inicio, duración calculada)
 - ✅ Fix argumento de `success()` en endpoint assign
 
-### Completado — P3 (Fixes y utilidades)
+### Completado — P3 (Fixes, utilidades y preparación producción)
 - ✅ Fix interceptor 401 en `api.js`: ya no recarga la página al ingresar credenciales incorrectas en Login
 - ✅ Script `backend/reset-passwords.js`: recuperación de emergencia de credenciales sin borrar datos
+- ✅ `api.js`: API_URL desde `process.env.REACT_APP_API_URL` (con fallback a localhost)
+- ✅ `app.js`: CORS_ORIGIN desde `process.env.CORS_ORIGIN` (con fallback a localhost:3000)
+- ✅ `backend/.env.example`: template de variables de entorno del backend
+- ✅ `frontend/.env.example`: template de variables de entorno del frontend
+- ✅ `backend/ecosystem.config.js`: configuración PM2 para producción
+- ✅ `nginx.conf.example`: plantilla Nginx con SSL, proxy API y SPA routing
+
+### Variables de Entorno (producción)
+
+**Backend (`backend/.env`):**
+```
+PORT=3001
+JWT_SECRET=<secret_seguro_min_32_chars>
+CORS_ORIGIN=https://tu-dominio.cl
+NODE_ENV=production
+```
+
+**Frontend (`frontend/.env.production`):**
+```
+REACT_APP_API_URL=https://tu-dominio.cl/api
+```
 
 ### Pendiente
 - Tests frontend
@@ -344,7 +365,6 @@ npm run build    # Build de producción
 - Polling en tiempo real para estado de sillones (ahora requiere recarga manual)
 - Historia clínica visual del paciente
 - UI diferenciada por rol (admin vs doctor)
-- Variables de entorno para API_URL (actualmente hardcodeado `localhost:3001`)
 - Migraciones Sequelize en lugar de `sync()`
 - Migración futura a base de datos online (PostgreSQL/MySQL)
 
@@ -369,4 +389,4 @@ npm run build    # Build de producción
 
 ---
 
-*Última actualización: 2026-03-24 — Fix login interceptor 401, reset-passwords.js, README actualizado*
+*Última actualización: 2026-03-25 — Variables de entorno para producción, ecosystem.config.js (PM2), nginx.conf.example*

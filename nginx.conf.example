@@ -1,0 +1,63 @@
+# ====================================================
+# CDIEMApp — Configuración Nginx para producción
+#
+# Instrucciones:
+#   1. Copia este archivo a /etc/nginx/sites-available/cdiem
+#   2. Reemplaza "tu-dominio.cl" por tu dominio real
+#   3. Ejecuta: ln -s /etc/nginx/sites-available/cdiem /etc/nginx/sites-enabled/
+#   4. Ejecuta: nginx -t && systemctl reload nginx
+#   5. Obtén SSL: certbot --nginx -d tu-dominio.cl -d www.tu-dominio.cl
+# ====================================================
+
+server {
+    listen 80;
+    server_name tu-dominio.cl www.tu-dominio.cl;
+
+    # Redirigir todo HTTP a HTTPS (certbot lo configura automáticamente)
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name tu-dominio.cl www.tu-dominio.cl;
+
+    # Certificados SSL (generados por certbot automáticamente)
+    ssl_certificate     /etc/letsencrypt/live/tu-dominio.cl/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tu-dominio.cl/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Frontend — servir el build estático de React
+    root /var/www/cdiem/frontend/build;
+    index index.html;
+
+    location / {
+        # Necesario para React Router (SPA)
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Backend API — proxy al servidor Node.js
+    location /api {
+        proxy_pass         http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection 'upgrade';
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Health check del backend
+    location /health {
+        proxy_pass http://localhost:3001;
+    }
+
+    # Seguridad — ocultar versión de Nginx
+    server_tokens off;
+
+    # Logs
+    access_log /var/log/nginx/cdiem.access.log;
+    error_log  /var/log/nginx/cdiem.error.log;
+}

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// IMPORTANTE: Asegúrate de que esta URL sea correcta
-const API_URL = 'http://localhost:3001/api';
+// En desarrollo usa localhost. En producción define REACT_APP_API_URL en el .env
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 // Crear instancia de axios
 const api = axios.create({
