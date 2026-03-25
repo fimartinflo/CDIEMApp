@@ -78,6 +78,10 @@ const Chairs = () => {
     loadChairs();
     loadPatients();
     loadInventory();
+
+    // Polling: actualiza estado de sillones cada 30 segundos
+    const interval = setInterval(loadChairs, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadChairs = async () => {

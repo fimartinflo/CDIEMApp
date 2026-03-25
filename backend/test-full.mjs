@@ -23,7 +23,7 @@ const fail = (name, msg) => { failed++; console.error(`  ❌ ${name}: ${msg}`); 
 const assert = (name, cond, msg) => cond ? ok(name) : fail(name, msg || 'Falló');
 
 // ─── Estado compartido entre tests ──────────────────────────────────────────
-let adminToken, doctorToken, patientId1, patientId2, chairId, sessionId, medId1, medId2;
+let adminToken, enfermeraToken, patientId1, patientId2, chairId, sessionId, medId1, medId2;
 
 // ═══════════════════════════════════════════════════════════════════════════
 console.log('\n🔐 AUTENTICACIÓN\n');
@@ -33,10 +33,10 @@ let r = await req('POST', '/auth/login', { username: 'admin', password: 'admin12
 assert('Login admin', r.data.success && r.data.data?.token, JSON.stringify(r.data));
 if (r.data.success) { adminToken = r.data.data.token; token = adminToken; }
 
-// 2. Login doctor exitoso
-r = await req('POST', '/auth/login', { username: 'doctor', password: 'doctor123' }, false);
-assert('Login doctor', r.data.success && r.data.data?.token, JSON.stringify(r.data));
-if (r.data.success) doctorToken = r.data.data.token;
+// 2. Login enfermera exitoso
+r = await req('POST', '/auth/login', { username: 'enfermera', password: 'enfermera123' }, false);
+assert('Login enfermera', r.data.success && r.data.data?.token, JSON.stringify(r.data));
+if (r.data.success) enfermeraToken = r.data.data.token;
 
 // 3. Credenciales incorrectas → 401
 r = await req('POST', '/auth/login', { username: 'admin', password: 'wrong' }, false);
@@ -257,17 +257,37 @@ assert('Dashboard muestra 2 pacientes', r.data.data?.pacientes?.total === 2, `to
 
 // ═══════════════════════════════════════════════════════════════════════════
 console.log('\n🔐 AUTORIZACIÓN POR ROLES\n');
-token = doctorToken;
+token = enfermeraToken;
 
-// Doctor puede crear paciente
+// Enfermera puede crear paciente
 r = await req('POST', '/patients', {
-  nombreCompleto: 'Test Doctor',
+  nombreCompleto: 'Test Enfermera',
   tipoIdentificacion: 'pasaporte',
   pasaporte: 'ABC123',
   genero: 'M',
-  correo: 'test.doc@test.cl'
+  correo: 'test.enf@test.cl'
 });
-assert('Doctor puede crear paciente', r.data.success, JSON.stringify(r.data));
+assert('Enfermera puede crear paciente', r.data.success, JSON.stringify(r.data));
+
+// Login administracion y verificar acceso a reportes
+r = await req('POST', '/auth/login', { username: 'administracion', password: 'admin2024' }, false);
+assert('Login administracion', r.data.success && r.data.data?.token, JSON.stringify(r.data));
+const adminContToken = r.data.data?.token;
+
+// administracion NO puede crear pacientes (rol clínico restringido)
+token = adminContToken;
+r = await req('POST', '/patients', { nombreCompleto: 'Test Contable', tipoIdentificacion: 'pasaporte', pasaporte: 'XYZ999', genero: 'M' });
+assert('Administracion NO puede crear pacientes → 403', r.status === 403, `status=${r.status}`);
+
+// administracion NO puede asignar sillón
+r = await req('POST', `/chairs/${chairId}/assign`, { pacienteId: patientId1 });
+assert('Administracion NO puede asignar sillón → 403', r.status === 403, `status=${r.status}`);
+
+// administracion SÍ puede acceder a reportes
+r = await req('GET', `/reports?startDate=${today}&endDate=${today}`);
+assert('Administracion SÍ puede ver reportes', r.data.success, JSON.stringify(r.data));
+
+token = adminToken; // restaurar token admin
 
 // ═══════════════════════════════════════════════════════════════════════════
 console.log('\n─────────────────────────────────────────');

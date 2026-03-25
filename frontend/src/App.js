@@ -12,20 +12,25 @@ import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
 
 // Importar componentes
-import PrivateRoute from './components/PrivateRoute';
+import PrivateRoute, { RoleRoute } from './components/PrivateRoute';
 import Layout from './components/Layout';
+import authService from './services/authService';
 
-// Crear tema personalizado
 const theme = createTheme({
   palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
+    primary: { main: '#1976d2' },
+    secondary: { main: '#dc004e' },
   },
 });
+
+// Redirige al home del rol correspondiente después del login
+const DefaultRedirect = () => {
+  const user = authService.getCurrentUser();
+  const isAuthenticated = authService.isAuthenticated();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'administracion') return <Navigate to="/reports" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
 
 function App() {
   return (
@@ -36,20 +41,29 @@ function App() {
           {/* Ruta pública */}
           <Route path="/login" element={<Login />} />
 
-          
           {/* Rutas privadas */}
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/patients" element={<Patients />} />
-              <Route path="/chairs" element={<Chairs />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/reports" element={<Reports />} />
+
+              {/* Admin + enfermera: módulos clínicos */}
+              <Route element={<RoleRoute allowedRoles={['admin', 'enfermera']} />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/patients" element={<Patients />} />
+                <Route path="/chairs" element={<Chairs />} />
+                <Route path="/inventory" element={<Inventory />} />
+              </Route>
+
+              {/* Admin + administracion: reportes */}
+              <Route element={<RoleRoute allowedRoles={['admin', 'administracion']} />}>
+                <Route path="/reports" element={<Reports />} />
+              </Route>
+
             </Route>
           </Route>
 
-          {/* Ruta por defecto */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Ruta por defecto — redirige según rol */}
+          <Route path="/" element={<DefaultRedirect />} />
+          <Route path="*" element={<DefaultRedirect />} />
         </Routes>
       </Router>
     </ThemeProvider>

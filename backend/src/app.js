@@ -133,7 +133,7 @@ app.get('/api/chairs', auth, async (req, res) => {
 // ==================== SILLONES: OPERACIONES DE SESIÓN ====================
 
 // Asignar paciente a sillón
-app.post('/api/chairs/:id/assign', auth, allowRoles('admin', 'doctor'), async (req, res) => {
+app.post('/api/chairs/:id/assign', auth, allowRoles('admin', 'enfermera'), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -274,7 +274,7 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
 });
 
 // Administrar medicamento en sesión activa
-app.post('/api/chairs/:id/medications', auth, allowRoles('admin', 'doctor'), async (req, res) => {
+app.post('/api/chairs/:id/medications', auth, allowRoles('admin', 'enfermera'), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;
