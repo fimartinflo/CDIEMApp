@@ -24,11 +24,12 @@ Sistema de gestión clínica para un centro oncológico. Permite administrar pac
 ## Características Principales
 
 - Gestión completa de pacientes (CRUD + búsqueda por nombre/RUT/pasaporte)
-- Gestión de sillones de atención con estado en tiempo real
+- Gestión de sillones de atención con estado en tiempo real (polling cada 30s)
 - Asignación de pacientes a sillones y registro de sesiones clínicas
 - Administración de medicamentos por sesión (con descuento de stock automático)
 - Control de inventario con alertas de stock bajo y vencimiento
 - Dashboard con métricas del sistema en tiempo real
+- Módulo de Reportes con costos por sesión y exportación CSV/PDF
 - Autenticación JWT con roles diferenciados (admin / enfermera / administracion)
 - Persistencia local con SQLite (sin conexión a internet requerida)
 
@@ -41,6 +42,7 @@ CDIEMApp/
 ├── CLAUDE.md                    # Contexto del proyecto para el asistente IA
 ├── README.md
 ├── .gitignore
+├── nginx.conf.example           # Plantilla Nginx para producción
 ├── database.sqlite              # Base de datos local (git-ignorada)
 │
 ├── backend/
@@ -54,77 +56,19 @@ CDIEMApp/
 │   │   └── utils/response.js    # Helpers de respuesta estandarizada
 │   ├── init-db.js               # Script de inicialización y seed
 │   ├── reset-passwords.js       # Script de recuperación de credenciales
+│   ├── ecosystem.config.js      # Configuración PM2 para producción
+│   ├── .env.example             # Template de variables de entorno
 │   └── package.json
 │
 └── frontend/
     ├── src/
     │   ├── App.js
     │   ├── components/          # Layout, PatientForm, PatientSearch, PrivateRoute
-    │   ├── pages/               # Login, Dashboard, Patients, Chairs, Inventory
+    │   ├── pages/               # Login, Dashboard, Patients, Chairs, Inventory, Reports
     │   └── services/            # api.js (Axios), authService, patientService, etc.
+    ├── .env.example             # Template de variables de entorno
     └── package.json
 ```
-
----
-
-## Requisitos Previos
-
-- Node.js v18 o superior
-- npm
-
----
-
-## Instalación y Ejecución
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/fimartinflo/CDIEMApp.git
-cd CDIEMApp
-```
-
-### 2. Instalar dependencias del backend
-
-```bash
-cd backend
-npm install
-```
-
-### 3. Inicializar la base de datos
-
-```bash
-npm run init-db
-```
-
-Esto crea las tablas y los datos iniciales:
-- Usuarios: `admin` / `admin123` y `doctor` / `doctor123`
-- 4 sillones (S1–S4)
-- 3 medicamentos de ejemplo
-
-### 4. Levantar el backend
-
-```bash
-npm run dev       # Desarrollo (nodemon, auto-restart)
-# o
-npm start         # Producción
-```
-
-El servidor queda disponible en `http://localhost:3001`.
-
-### 5. Instalar dependencias del frontend
-
-```bash
-cd ../frontend
-npm install
-```
-
-### 6. Levantar el frontend
-
-```bash
-npm start
-```
-
-La aplicación queda disponible en `http://localhost:3000`.
 
 ---
 
@@ -143,6 +87,265 @@ La aplicación queda disponible en `http://localhost:3000`.
 
 ---
 
+## Ejecución Local (Desarrollo)
+
+No requiere ningún archivo `.env` — todos los valores tienen fallback automático a `localhost`.
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/fimartinflo/CDIEMApp.git
+cd CDIEMApp
+```
+
+### 2. Instalar dependencias del backend e inicializar la BD
+
+```bash
+cd backend
+npm install
+npm run init-db
+```
+
+`init-db` crea las tablas y los datos iniciales:
+- 3 usuarios: admin, enfermera, administracion
+- 4 sillones (S1–S4, uno en mantenimiento)
+- 3 medicamentos de ejemplo con precios en CLP
+
+### 3. Levantar el backend
+
+```bash
+npm run dev       # Desarrollo con nodemon (auto-restart al guardar)
+# o
+npm start         # Sin auto-restart
+```
+
+El servidor queda disponible en `http://localhost:3001`.
+
+### 4. Instalar dependencias del frontend y levantarlo
+
+En una segunda terminal:
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+La aplicación queda disponible en `http://localhost:3000`.
+
+### 5. Verificar que funciona
+
+Abrir `http://localhost:3000` e iniciar sesión con `admin` / `admin123`.
+
+---
+
+## Deploy a Producción
+
+### Arquitectura objetivo
+
+```
+Internet → Dominio (DNS apunta al VPS)
+         → VPS Ubuntu 22.04
+           ├── Nginx (puerto 80 → redirect HTTPS, puerto 443 con SSL)
+           │   ├── /        → sirve /var/www/cdiem/frontend/build (estático)
+           │   └── /api     → proxy a http://localhost:3001
+           └── PM2 → Node.js backend en puerto 3001
+                    └── SQLite en /var/www/cdiem/backend/database.sqlite
+```
+
+### Prerrequisitos
+
+- VPS con Ubuntu 22.04 LTS (mínimo 1 vCPU, 1GB RAM)
+  - Opciones económicas: Hetzner Cloud CX22 (~€4/mes), DigitalOcean (~$6/mes)
+- Un dominio con un registro A apuntando a la IP del VPS
+- Acceso SSH al servidor
+
+---
+
+### Paso 1 — Preparar el servidor
+
+```bash
+# Conectar al VPS
+ssh root@IP_DEL_VPS
+
+# Actualizar el sistema
+apt update && apt upgrade -y
+
+# Instalar Node.js 20 LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# Instalar Nginx
+apt install -y nginx
+
+# Instalar PM2 (gestor de procesos para Node.js)
+npm install -g pm2
+
+# Instalar Certbot (certificados SSL gratuitos de Let's Encrypt)
+apt install -y certbot python3-certbot-nginx
+
+# Crear directorio de logs para el backend
+mkdir -p /var/log/cdiem
+```
+
+### Paso 2 — Subir el código
+
+```bash
+# Desde el servidor, clonar el repositorio
+git clone https://github.com/fimartinflo/CDIEMApp.git /var/www/cdiem
+cd /var/www/cdiem
+```
+
+> Alternativa: copiar desde tu máquina con `scp -r ./CDIEMApp root@IP_DEL_VPS:/var/www/cdiem`
+
+### Paso 3 — Configurar variables de entorno del backend
+
+```bash
+cd /var/www/cdiem/backend
+cp .env.example .env
+nano .env
+```
+
+Editar con los valores reales:
+
+```env
+PORT=3001
+JWT_SECRET=pon_aqui_un_secret_muy_largo_y_aleatorio_minimo_32_caracteres
+CORS_ORIGIN=https://tu-dominio.cl
+NODE_ENV=production
+
+# Opcional: configurar para envío de reportes por email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=tu-correo@gmail.com
+SMTP_PASS=xxxx-xxxx-xxxx-xxxx
+SMTP_FROM=noreply@tu-dominio.cl
+```
+
+> **JWT_SECRET**: genera uno seguro con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+
+### Paso 4 — Instalar dependencias e inicializar la BD del backend
+
+```bash
+npm install
+node init-db.js
+# Debe mostrar: "Base de datos inicializada correctamente"
+```
+
+### Paso 5 — Configurar variables de entorno del frontend
+
+```bash
+cd /var/www/cdiem/frontend
+cp .env.example .env.production
+nano .env.production
+```
+
+Contenido:
+
+```env
+REACT_APP_API_URL=https://tu-dominio.cl/api
+```
+
+### Paso 6 — Compilar el frontend
+
+```bash
+npm install
+npm run build
+# El build queda en /var/www/cdiem/frontend/build/
+```
+
+### Paso 7 — Configurar Nginx
+
+```bash
+# Copiar la plantilla incluida en el repositorio
+cp /var/www/cdiem/nginx.conf.example /etc/nginx/sites-available/cdiem
+
+# Editar y reemplazar "tu-dominio.cl" por tu dominio real
+nano /etc/nginx/sites-available/cdiem
+
+# Activar el sitio
+ln -s /etc/nginx/sites-available/cdiem /etc/nginx/sites-enabled/
+
+# Verificar configuración y recargar
+nginx -t && systemctl reload nginx
+```
+
+### Paso 8 — Obtener certificado SSL (HTTPS gratuito)
+
+```bash
+certbot --nginx -d tu-dominio.cl -d www.tu-dominio.cl
+# Certbot modifica la configuración de Nginx automáticamente
+# El certificado se renueva solo cada 90 días
+```
+
+### Paso 9 — Levantar el backend con PM2
+
+```bash
+cd /var/www/cdiem/backend
+
+# Iniciar el proceso
+pm2 start ecosystem.config.js --env production
+
+# Guardar configuración para que persista tras reinicios del servidor
+pm2 save
+
+# Registrar PM2 como servicio del sistema (ejecutar el comando que indique la salida)
+pm2 startup
+```
+
+### Paso 10 — Verificar que todo funciona
+
+```bash
+# Health check del backend
+curl https://tu-dominio.cl/health
+# Debe responder: {"status":"healthy",...}
+
+# Ver estado de los procesos PM2
+pm2 status
+
+# Ver logs en tiempo real
+pm2 logs cdiem-backend
+```
+
+Luego abrir `https://tu-dominio.cl` en el navegador y hacer login con `admin` / `admin123`.
+
+### Paso 11 — Configurar backups automáticos de la BD (recomendado)
+
+```bash
+# Crear directorio de backups
+mkdir -p /var/backups/cdiem
+
+# Programar backup diario a las 2am
+crontab -e
+# Agregar esta línea:
+0 2 * * * cp /var/www/cdiem/backend/database.sqlite /var/backups/cdiem/db-$(date +\%Y\%m\%d).sqlite
+```
+
+---
+
+### Actualizar la aplicación en producción
+
+Cuando haya cambios en el repositorio:
+
+```bash
+cd /var/www/cdiem
+
+# Traer los cambios
+git pull
+
+# Si hay cambios en el backend
+cd backend && npm install
+
+# Si hay cambios en el frontend, recompilar
+cd ../frontend && npm install && npm run build
+
+# Reiniciar el backend
+pm2 restart cdiem-backend
+```
+
+---
+
 ## API REST (puerto 3001)
 
 ### Autenticación
@@ -152,7 +355,7 @@ La aplicación queda disponible en `http://localhost:3000`.
 | GET | `/api/auth/profile` | Perfil del usuario autenticado |
 | PUT | `/api/auth/change-password` | Cambiar contraseña |
 
-### Pacientes
+### Pacientes *(admin + enfermera)*
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/patients` | Listar con paginación |
@@ -163,7 +366,7 @@ La aplicación queda disponible en `http://localhost:3000`.
 | GET | `/api/patients/search` | Búsqueda por nombre/RUT/pasaporte |
 | GET | `/api/patients/:id/history` | Historial de sesiones clínicas |
 
-### Sillones
+### Sillones *(admin + enfermera)*
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/chairs` | Listar con estado de sesión activa |
@@ -173,7 +376,7 @@ La aplicación queda disponible en `http://localhost:3000`.
 | GET | `/api/chairs/live` | Estado en vivo de todos los sillones |
 | GET | `/api/chairs/:id/history` | Historial de sesiones |
 
-### Inventario
+### Inventario *(admin + enfermera)*
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/inventory` | Listar medicamentos |
@@ -181,6 +384,13 @@ La aplicación queda disponible en `http://localhost:3000`.
 | GET | `/api/inventory/alerts` | Stock crítico y próximos a vencer |
 | PUT | `/api/inventory/:id/quantity` | Actualizar stock |
 | DELETE | `/api/inventory/:id` | Eliminar (borrado lógico) |
+
+### Reportes *(admin + administracion)*
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/reports` | Reporte por período (startDate, endDate) |
+| GET | `/api/reports/patient/:id` | Informe individual de paciente |
+| POST | `/api/reports/email` | Enviar reporte por email |
 
 ### Utilidades
 | Método | Ruta | Descripción |
@@ -193,15 +403,17 @@ La aplicación queda disponible en `http://localhost:3000`.
 ## Flujo Clínico Principal
 
 ```
-1. Login → JWT almacenado en localStorage
+1. Login → JWT almacenado en localStorage, menú según rol
 2. Dashboard → métricas del sistema en tiempo real
-3. Pacientes → CRUD completo + búsqueda debounced
+3. Pacientes → CRUD completo + búsqueda debounced + agendar visita
 4. Inventario → gestión de medicamentos (stock, alertas)
-5. Sillones:
-   a. Sillón disponible → "Asignar Paciente" → crea sesión activa
-   b. Sesión activa → administrar medicamentos (descuenta stock)
+5. Sillones (actualización automática cada 30s):
+   a. Sillón disponible → "Asignar Paciente" → selector de pacientes activos
+      (opcional: agregar medicamentos al momento de asignar)
+   b. Sesión activa → "+ Medicamento" → selector del inventario (descuenta stock)
    c. "Liberar Sillón" → cierra sesión, sillón vuelve a disponible
-6. Historial → sesiones por paciente o por sillón
+6. Reportes → seleccionar período → ver costos por paciente/medicamento
+   → exportar CSV o PDF → enviar por email
 ```
 
 ---
@@ -210,17 +422,29 @@ La aplicación queda disponible en `http://localhost:3000`.
 
 ### Backend
 ```bash
-npm start         # Producción
-npm run dev       # Desarrollo con nodemon
-npm run init-db   # Inicializar BD con datos de prueba
-npm test          # 67 tests de integración
+npm start              # Producción (node src/app.js)
+npm run dev            # Desarrollo con nodemon (auto-restart)
+npm run init-db        # Inicializar BD con datos de prueba
+node test-full.mjs     # Suite de 60 tests de integración (requiere BD limpia)
 ```
 
 ### Frontend
 ```bash
-npm start         # Dev server en puerto 3000
-npm run build     # Build de producción
+npm start              # Dev server en puerto 3000
+npm run build          # Build de producción (output: build/)
 ```
+
+---
+
+## Solución de Problemas
+
+| Problema | Solución |
+|---------|---------|
+| No puedo hacer login | Ejecutar `node backend/reset-passwords.js` |
+| Backend no inicia | Verificar con `pm2 logs cdiem-backend` o `node backend/src/app.js` |
+| Frontend no conecta con backend | Verificar que `REACT_APP_API_URL` apunta al backend correcto |
+| Nginx muestra 502 Bad Gateway | El backend no está corriendo — ejecutar `pm2 start` |
+| Certificado SSL vencido | Ejecutar `certbot renew` (normalmente es automático) |
 
 ---
 
@@ -230,6 +454,8 @@ npm run build     # Build de producción
 - Migraciones Sequelize en lugar de `sync()`
 - Migración futura a base de datos online (PostgreSQL/MySQL)
 
+---
+
 ## Implementado
 
 - ✅ Roles diferenciados: admin, enfermera, administracion
@@ -237,5 +463,6 @@ npm run build     # Build de producción
 - ✅ Rutas protegidas por rol en frontend y backend
 - ✅ Selector de medicamentos del inventario al asignar sillón
 - ✅ Polling en tiempo real para estado de sillones (cada 30s)
-- ✅ Variables de entorno para API_URL (REACT_APP_API_URL)
-- ✅ Módulo de Reportes con costos y exportación
+- ✅ Variables de entorno para API_URL y CORS
+- ✅ Módulo de Reportes con costos, exportación CSV/PDF y envío por email
+- ✅ Suite de 60 tests de integración (auth, pacientes, sillones, reportes, roles)
