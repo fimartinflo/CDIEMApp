@@ -46,10 +46,10 @@ const roleColors = {
 
 // Todos los items de menú con sus roles permitidos
 const allMenuItems = [
-  { text: 'Acceso Rápido', icon: <DashboardIcon />, path: '/dashboard', roles: ['admin', 'enfermera'] },
+  { text: 'Acceso Rápido', icon: <DashboardIcon />, path: '/dashboard', roles: ['admin', 'enfermera', 'administracion'] },
   { text: 'Pacientes',     icon: <People />,        path: '/patients',  roles: ['admin', 'enfermera'] },
   { text: 'Sillones',      icon: <Chair />,          path: '/chairs',    roles: ['admin', 'enfermera'] },
-  { text: 'Inventario',    icon: <Inventory />,      path: '/inventory', roles: ['admin', 'enfermera'] },
+  { text: 'Inventario',    icon: <Inventory />,      path: '/inventory', roles: ['admin', 'enfermera', 'administracion'] },
   { text: 'Reportes',      icon: <Assessment />,     path: '/reports',   roles: ['admin', 'administracion'] },
 ];
 
