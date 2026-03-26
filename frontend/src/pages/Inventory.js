@@ -42,7 +42,8 @@ import inventoryService from '../services/inventoryService';
 import authService from '../services/authService';
 
 const Inventory = () => {
-  const isAdmin = authService.getCurrentUser()?.role === 'admin';
+  const userRole = authService.getCurrentUser()?.role;
+  const canWrite = userRole === 'admin' || userRole === 'administracion';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -210,7 +211,7 @@ const Inventory = () => {
             <Typography variant="h6">
               Total de medicamentos: {items.length}
             </Typography>
-            {isAdmin && (
+            {canWrite && (
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -302,7 +303,7 @@ const Inventory = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {isAdmin && (
+                          {canWrite && (
                             <>
                               <IconButton
                                 size="small"

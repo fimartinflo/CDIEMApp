@@ -41,7 +41,7 @@ const Dashboard = () => {
       icon: <Inventory fontSize="large" />,
       path: '/inventory',
       color: '#ed6c02',
-      roles: ['admin', 'enfermera']
+      roles: ['admin', 'enfermera', 'administracion']
     },
     {
       title: 'Reportes',

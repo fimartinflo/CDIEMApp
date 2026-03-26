@@ -29,7 +29,7 @@ Sistema de gestión clínica para un centro oncológico. Permite administrar pac
 - Administración de medicamentos por sesión (con descuento de stock automático)
 - Control de inventario con alertas de stock bajo y vencimiento
 - Dashboard con métricas del sistema en tiempo real
-- Módulo de Reportes con costos por sesión y exportación CSV/PDF
+- Módulo de Reportes con costos por sesión y exportación Excel
 - Autenticación JWT con roles diferenciados (admin / enfermera / administracion)
 - Persistencia local con SQLite (sin conexión a internet requerida)
 
@@ -77,8 +77,8 @@ CDIEMApp/
 | Usuario | Contraseña | Rol | Acceso |
 |---------|-----------|-----|--------|
 | `admin` | `admin123` | Administrador | Acceso completo a todos los módulos |
-| `enfermera` | `enfermera123` | Enfermera | Dashboard, Pacientes, Sillones, Inventario (sin Reportes) |
-| `administracion` | `admin2024` | Administración | Solo módulo de Reportes (facturación) |
+| `enfermera` | `enfermera123` | Enfermera | Pacientes, Sillones, Inventario (solo lectura) |
+| `administracion` | `admin2024` | Administración | Inventario (lectura + escritura) + Reportes |
 
 > Si las credenciales dejan de funcionar (ej. BD corrompida), ejecutar:
 > ```bash
@@ -376,14 +376,15 @@ pm2 restart cdiem-backend
 | GET | `/api/chairs/live` | Estado en vivo de todos los sillones |
 | GET | `/api/chairs/:id/history` | Historial de sesiones |
 
-### Inventario *(admin + enfermera)*
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/api/inventory` | Listar medicamentos |
-| POST | `/api/inventory` | Crear medicamento |
-| GET | `/api/inventory/alerts` | Stock crítico y próximos a vencer |
-| PUT | `/api/inventory/:id/quantity` | Actualizar stock |
-| DELETE | `/api/inventory/:id` | Eliminar (borrado lógico) |
+### Inventario
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/api/inventory` | admin + enfermera + administracion | Listar medicamentos |
+| GET | `/api/inventory/alerts` | admin + enfermera + administracion | Stock crítico y próximos a vencer |
+| POST | `/api/inventory` | admin + administracion | Crear medicamento |
+| PUT | `/api/inventory/:id/quantity` | admin + administracion | Actualizar stock |
+| PUT | `/api/inventory/:id` | admin + administracion | Editar medicamento |
+| DELETE | `/api/inventory/:id` | admin + administracion | Eliminar (borrado lógico) |
 
 ### Reportes *(admin + administracion)*
 | Método | Ruta | Descripción |
@@ -413,7 +414,7 @@ pm2 restart cdiem-backend
    b. Sesión activa → "+ Medicamento" → selector del inventario (descuenta stock)
    c. "Liberar Sillón" → cierra sesión, sillón vuelve a disponible
 6. Reportes → seleccionar período → ver costos por paciente/medicamento
-   → exportar CSV o PDF → enviar por email
+   → exportar Excel (CSV)
 ```
 
 ---
@@ -425,7 +426,7 @@ pm2 restart cdiem-backend
 npm start              # Producción (node src/app.js)
 npm run dev            # Desarrollo con nodemon (auto-restart)
 npm run init-db        # Inicializar BD con datos de prueba
-node test-full.mjs     # Suite de 60 tests de integración (requiere BD limpia)
+node test-full.mjs     # Suite de 63 tests de integración (requiere BD limpia)
 ```
 
 ### Frontend
@@ -464,5 +465,5 @@ npm run build          # Build de producción (output: build/)
 - ✅ Selector de medicamentos del inventario al asignar sillón
 - ✅ Polling en tiempo real para estado de sillones (cada 30s)
 - ✅ Variables de entorno para API_URL y CORS
-- ✅ Módulo de Reportes con costos, exportación CSV/PDF y envío por email
-- ✅ Suite de 60 tests de integración (auth, pacientes, sillones, reportes, roles)
+- ✅ Módulo de Reportes con costos y exportación Excel
+- ✅ Suite de 63 tests de integración (auth, pacientes, sillones, reportes, roles, inventario por rol)
