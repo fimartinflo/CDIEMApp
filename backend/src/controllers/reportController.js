@@ -24,8 +24,8 @@ const buildReportData = (sessions, startDate, endDate) => {
     const chair = session.Chair;
     const meds = session.SessionMedications || [];
 
-    const duracionMinutos = session.horaFin
-      ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 60000)
+    const duracionSegundos = session.horaFin
+      ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 1000)
       : null;
 
     const medicamentosSesion = meds.map(sm => {
@@ -62,7 +62,7 @@ const buildReportData = (sessions, startDate, endDate) => {
         sillon: chair?.nombre || 'Sin sillón',
         horaInicio: session.horaInicio,
         horaFin: session.horaFin,
-        duracionMinutos,
+        duracionSegundos,
         notas: session.notas,
         medicamentos: medicamentosSesion,
         totalSesion
@@ -75,11 +75,11 @@ const buildReportData = (sessions, startDate, endDate) => {
       if (!sillonesMap[chair.id]) {
         sillonesMap[chair.id] = {
           id: chair.id, numero: chair.numero, nombre: chair.nombre,
-          ubicacion: chair.ubicacion, totalSesiones: 0, minutosTotales: 0
+          ubicacion: chair.ubicacion, totalSesiones: 0, segundosTotales: 0
         };
       }
       sillonesMap[chair.id].totalSesiones++;
-      sillonesMap[chair.id].minutosTotales += (duracionMinutos || 0);
+      sillonesMap[chair.id].segundosTotales += (duracionSegundos || 0);
     }
 
     // Acumular por medicamento
@@ -187,8 +187,8 @@ const reportController = {
       });
 
       const sesiones = sessions.map(session => {
-        const duracionMinutos = session.horaFin
-          ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 60000)
+        const duracionSegundos = session.horaFin
+          ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 1000)
           : null;
         const medicamentos = (session.SessionMedications || []).map(sm => {
           const precio = sm.precioUnitario || sm.Medication?.precio || 0;
@@ -206,7 +206,7 @@ const reportController = {
           sillon: session.Chair?.nombre || 'Sin sillón',
           horaInicio: session.horaInicio,
           horaFin: session.horaFin,
-          duracionMinutos,
+          duracionSegundos,
           notas: session.notas,
           medicamentos,
           totalSesion: medicamentos.reduce((sum, m) => sum + m.subtotal, 0)

@@ -192,11 +192,17 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
                   value={formData.estado}
                   onChange={handleChange}
                   label="Cambiar estado"
+                  disabled={formData.estado === 'en_tratamiento'}
                 >
                   <MenuItem value="activo">Activo</MenuItem>
                   <MenuItem value="inactivo">Inactivo</MenuItem>
                   <MenuItem value="en_tratamiento">En Tratamiento</MenuItem>
                 </Select>
+                {formData.estado === 'en_tratamiento' && (
+                  <FormHelperText>
+                    El estado se gestiona desde el flujo clínico de sillones
+                  </FormHelperText>
+                )}
               </FormControl>
             </Box>
           </Paper>

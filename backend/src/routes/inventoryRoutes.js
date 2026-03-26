@@ -4,17 +4,19 @@ const inventoryController = require('../controllers/inventoryController');
 const { authMiddleware } = require('../middleware/auth');
 const allowRoles = require('../middleware/roles');
 
-// Requieren auth + rol clínico (admin o enfermera)
+// Todas las rutas requieren auth + al menos rol clínico
 router.use(authMiddleware);
 router.use(allowRoles('admin', 'enfermera'));
 
-// IMPORTANTE: rutas específicas antes de rutas con parámetros
+// Lectura: admin y enfermera
 router.get('/alerts', inventoryController.getAlerts);
 router.get('/', inventoryController.getAllItems);
 router.get('/:id', inventoryController.getItemById);
-router.post('/', inventoryController.createItem);
-router.put('/:id/quantity', inventoryController.updateQuantity);
-router.put('/:id', inventoryController.updateItem);
-router.delete('/:id', inventoryController.deleteItem);
+
+// Escritura: solo admin
+router.post('/', allowRoles('admin'), inventoryController.createItem);
+router.put('/:id/quantity', allowRoles('admin'), inventoryController.updateQuantity);
+router.put('/:id', allowRoles('admin'), inventoryController.updateItem);
+router.delete('/:id', allowRoles('admin'), inventoryController.deleteItem);
 
 module.exports = router;

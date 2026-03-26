@@ -44,6 +44,14 @@ import patientService from '../services/patientService';
 import PatientForm from '../components/PatientForm';
 import api from '../services/api';
 
+const secToHMS = (s) => {
+  if (s == null) return '';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
+};
+
 const Patients = () => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -248,7 +256,7 @@ const Patients = () => {
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'center' }}>
           <Box sx={{ display: 'flex', flex: 1, gap: 2, width: '100%' }}>
             <TextField
-              placeholder="Buscar por nombre, RUT o teléfono..."
+              placeholder="Buscar por nombre, RUT o pasaporte..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               fullWidth
@@ -551,9 +559,9 @@ const Patients = () => {
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      {session.duracionMinutos !== null && (
+                      {session.duracionSegundos != null && (
                         <Chip
-                          label={`${session.duracionMinutos} min`}
+                          label={secToHMS(session.duracionSegundos)}
                           size="small"
                           color="primary"
                           variant="outlined"

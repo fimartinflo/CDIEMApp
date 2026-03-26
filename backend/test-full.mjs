@@ -172,7 +172,7 @@ assert('Estado en vivo de sillones', r.data.success, JSON.stringify(r.data));
 // 24. Liberar sillón
 r = await req('POST', `/chairs/${chairId}/release`);
 assert('Liberar sillón', r.data.success, JSON.stringify(r.data));
-assert('Duración calculada al liberar', r.data.data?.duracionMinutos !== undefined, JSON.stringify(r.data.data));
+assert('Duración calculada al liberar', r.data.data?.duracionSegundos !== undefined, JSON.stringify(r.data.data));
 
 // 25. Sillón vuelve a disponible
 r = await req('GET', '/chairs');
