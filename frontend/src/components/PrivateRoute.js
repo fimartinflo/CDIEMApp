@@ -21,9 +21,7 @@ export const RoleRoute = ({ allowedRoles }) => {
   }
 
   if (!allowedRoles.includes(user?.role)) {
-    // Redirige al home correspondiente al rol del usuario
-    const home = user?.role === 'administracion' ? '/reports' : '/dashboard';
-    return <Navigate to={home} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

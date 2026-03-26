@@ -28,7 +28,6 @@ const DefaultRedirect = () => {
   const user = authService.getCurrentUser();
   const isAuthenticated = authService.isAuthenticated();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role === 'administracion') return <Navigate to="/reports" replace />;
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -45,11 +44,17 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
 
+              {/* Todos los roles autenticados: dashboard */}
+              <Route path="/dashboard" element={<Dashboard />} />
+
               {/* Admin + enfermera: módulos clínicos */}
               <Route element={<RoleRoute allowedRoles={['admin', 'enfermera']} />}>
-                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/patients" element={<Patients />} />
                 <Route path="/chairs" element={<Chairs />} />
+              </Route>
+
+              {/* Admin + enfermera + administracion: inventario */}
+              <Route element={<RoleRoute allowedRoles={['admin', 'enfermera', 'administracion']} />}>
                 <Route path="/inventory" element={<Inventory />} />
               </Route>
 
