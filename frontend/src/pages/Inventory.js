@@ -60,17 +60,19 @@ const Inventory = () => {
     descripcion: '',
     cantidad: 0,
     unidad: 'unidad',
+    precio: 0,
     fechaExpiracion: null,
     proveedor: '',
     minimoStock: 10
   });
-  
+
   const [editItem, setEditItem] = useState({
     id: '',
     nombre: '',
     descripcion: '',
     cantidad: 0,
     unidad: 'unidad',
+    precio: 0,
     fechaExpiracion: null,
     proveedor: '',
     minimoStock: 10
@@ -103,6 +105,8 @@ const Inventory = () => {
 
   // Crear medicamento
   const handleCreate = async () => {
+    if (!newItem.nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    if (!newItem.precio || newItem.precio <= 0) { setError('El precio en CLP es obligatorio y debe ser mayor a 0'); return; }
     try {
       await inventoryService.createItem(newItem);
       setSuccess('Medicamento creado exitosamente');
@@ -112,6 +116,7 @@ const Inventory = () => {
         descripcion: '',
         cantidad: 0,
         unidad: 'unidad',
+        precio: 0,
         fechaExpiracion: null,
         proveedor: '',
         minimoStock: 10
@@ -124,6 +129,8 @@ const Inventory = () => {
 
   // Actualizar medicamento
   const handleEdit = async () => {
+    if (!editItem.nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    if (!editItem.precio || editItem.precio <= 0) { setError('El precio en CLP es obligatorio y debe ser mayor a 0'); return; }
     try {
       await inventoryService.updateItem(editItem.id, editItem);
       setSuccess('Medicamento actualizado exitosamente');
@@ -237,6 +244,7 @@ const Inventory = () => {
                   <TableCell>Descripción</TableCell>
                   <TableCell align="right">Cantidad</TableCell>
                   <TableCell>Unidad</TableCell>
+                  <TableCell align="right">Precio (CLP)</TableCell>
                   <TableCell>Fecha Expiración</TableCell>
                   <TableCell>Proveedor</TableCell>
                   <TableCell>Estado</TableCell>
@@ -264,6 +272,9 @@ const Inventory = () => {
                           </Box>
                         </TableCell>
                         <TableCell>{item.unidad}</TableCell>
+                        <TableCell align="right">
+                          {item.precio ? `$${item.precio.toLocaleString('es-CL')}` : <Chip label="Sin precio" color="error" size="small" />}
+                        </TableCell>
                         <TableCell>
                           {item.fechaExpiracion ? new Date(item.fechaExpiracion).toLocaleDateString('es-CL') : 'N/A'}
                           {expired && (
@@ -330,6 +341,7 @@ const Inventory = () => {
                                     descripcion: item.descripcion,
                                     cantidad: item.cantidad,
                                     unidad: item.unidad,
+                                    precio: item.precio || 0,
                                     fechaExpiracion: item.fechaExpiracion ? new Date(item.fechaExpiracion) : null,
                                     proveedor: item.proveedor,
                                     minimoStock: item.minimoStock
@@ -390,7 +402,7 @@ const Inventory = () => {
                   fullWidth
                   required
                 />
-                
+
                 <TextField
                   label="Unidad"
                   value={newItem.unidad}
@@ -398,7 +410,19 @@ const Inventory = () => {
                   fullWidth
                 />
               </Box>
-              
+
+              <TextField
+                label="Precio Unitario (CLP) *"
+                type="number"
+                value={newItem.precio}
+                onChange={(e) => setNewItem({...newItem, precio: parseInt(e.target.value) || 0})}
+                fullWidth
+                required
+                inputProps={{ min: 1 }}
+                helperText="Valor en pesos chilenos — se usará en los informes de costos"
+                error={newItem.precio <= 0}
+              />
+
               <DatePicker
                 label="Fecha de Expiración"
                 value={newItem.fechaExpiracion}
@@ -465,7 +489,7 @@ const Inventory = () => {
                   fullWidth
                   required
                 />
-                
+
                 <TextField
                   label="Unidad"
                   value={editItem.unidad}
@@ -473,7 +497,19 @@ const Inventory = () => {
                   fullWidth
                 />
               </Box>
-              
+
+              <TextField
+                label="Precio Unitario (CLP) *"
+                type="number"
+                value={editItem.precio}
+                onChange={(e) => setEditItem({...editItem, precio: parseInt(e.target.value) || 0})}
+                fullWidth
+                required
+                inputProps={{ min: 1 }}
+                helperText="Valor en pesos chilenos — se usará en los informes de costos"
+                error={editItem.precio <= 0}
+              />
+
               <DatePicker
                 label="Fecha de Expiración"
                 value={editItem.fechaExpiracion}

@@ -294,28 +294,34 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Género</InputLabel>
-              <Select name="genero" value={formData.genero} onChange={handleChange} label="Género">
-                <MenuItem value="">No especificar</MenuItem>
-                <MenuItem value="masculino">Masculino</MenuItem>
-                <MenuItem value="femenino">Femenino</MenuItem>
-                <MenuItem value="otro">Otro</MenuItem>
-              </Select>
-            </FormControl>
-            {formData.genero === 'otro' && (
-              <TextField
-                fullWidth
-                label="Especifique Género"
-                name="generoOtro"
-                value={formData.generoOtro}
-                onChange={handleChange}
-                error={!!errors.generoOtro}
-                helperText={errors.generoOtro}
-                sx={{ mt: 1 }}
-              />
-            )}
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <FormControl sx={{ minWidth: 220, flex: 1 }}>
+                <InputLabel>Género</InputLabel>
+                <Select
+                  name="genero"
+                  value={formData.genero}
+                  onChange={handleChange}
+                  label="Género"
+                >
+                  <MenuItem value="">No especificar</MenuItem>
+                  <MenuItem value="masculino">Masculino</MenuItem>
+                  <MenuItem value="femenino">Femenino</MenuItem>
+                  <MenuItem value="otro">Otro</MenuItem>
+                </Select>
+              </FormControl>
+              {formData.genero === 'otro' && (
+                <TextField
+                  label="Especifique Género"
+                  name="generoOtro"
+                  value={formData.generoOtro}
+                  onChange={handleChange}
+                  error={!!errors.generoOtro}
+                  helperText={errors.generoOtro}
+                  sx={{ flex: 1, minWidth: 200 }}
+                />
+              )}
+            </Box>
           </Grid>
 
           <Grid item xs={12}>

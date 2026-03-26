@@ -44,8 +44,7 @@ const Login = () => {
       
       if (result.success) {
         console.log('Login exitoso, redirigiendo...');
-        const role = result.data?.user?.role;
-        navigate(role === 'administracion' ? '/reports' : '/dashboard');
+        navigate('/dashboard');
       } else {
         setError(result.message || 'Error en el login');
       }
@@ -165,7 +164,7 @@ const Login = () => {
               <strong>enfermera</strong> / enfermera123 — módulo clínico
             </Typography>
             <Typography variant="caption" display="block">
-              <strong>administracion</strong> / admin2024 — solo reportes
+              <strong>administracion</strong> / admin2024 — inventario + reportes
             </Typography>
           </Box>
         </Paper>
