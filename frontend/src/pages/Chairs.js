@@ -74,14 +74,22 @@ const Chairs = () => {
   const [addMedId, setAddMedId] = useState('');
   const [addMedQty, setAddMedQty] = useState(1);
 
+  // Reloj en tiempo real para mostrar duración actualizada cada segundo
+  const [now, setNow] = useState(new Date());
+
   useEffect(() => {
     loadChairs();
     loadPatients();
     loadInventory();
 
     // Polling: actualiza estado de sillones cada 30 segundos
-    const interval = setInterval(loadChairs, 30000);
-    return () => clearInterval(interval);
+    const pollInterval = setInterval(loadChairs, 30000);
+    // Tick cada segundo para actualizar el cronómetro de duración
+    const clockInterval = setInterval(() => setNow(new Date()), 1000);
+    return () => {
+      clearInterval(pollInterval);
+      clearInterval(clockInterval);
+    };
   }, []);
 
   const loadChairs = async () => {
@@ -294,7 +302,7 @@ const Chairs = () => {
 
   const calculateDuration = (horaInicio) => {
     if (!horaInicio) return '';
-    const s = Math.floor((new Date() - new Date(horaInicio)) / 1000);
+    const s = Math.floor((now - new Date(horaInicio)) / 1000);
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
