@@ -8,5 +8,6 @@ const allowRoles = require('../middleware/roles');
 router.get('/', auth, allowRoles('admin', 'administracion'), reportController.getReport);
 router.get('/patient/:id', auth, allowRoles('admin', 'administracion'), reportController.getPatientReport);
 router.post('/email', auth, allowRoles('admin', 'administracion'), reportController.sendEmail);
+router.post('/cop-excel', auth, allowRoles('admin', 'administracion'), reportController.generateCopExcel);
 
 module.exports = router;

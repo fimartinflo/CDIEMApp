@@ -4,16 +4,17 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Collapse, IconButton, Chip, Card, CardContent, Dialog, DialogTitle,
   DialogContent, DialogActions, Alert, CircularProgress, Divider,
-  Tooltip
+  Tooltip, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import {
   ExpandMore, ExpandLess, Print, Download,
   PeopleAlt, EventNote, AttachMoney, MedicalServices,
-  Chair as ChairIcon, CalendarToday
+  Chair as ChairIcon, CalendarToday, TableChart
 } from '@mui/icons-material';
 import { format, startOfMonth, startOfWeek, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import reportService from '../services/reportService';
+import authService from '../services/authService';
 
 const clp = (n) => `$${(n || 0).toLocaleString('es-CL')}`;
 const fmtDate = (d) => d ? format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: es }) : '-';
@@ -201,6 +202,7 @@ const PatientRow = ({ paciente, onViewReport }) => {
 // ─── Página principal de Reportes ─────────────────────────────────────────────
 const Reports = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
+  const userRole = authService.getCurrentUser()?.role;
 
   const [periodoType, setPeriodoType] = useState('today');
   const [startDate, setStartDate] = useState(today);
@@ -213,6 +215,13 @@ const Reports = () => {
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
   const [patientReportData, setPatientReportData] = useState(null);
   const [patientLoading, setPatientLoading] = useState(false);
+
+  // COP Excel
+  const now = new Date();
+  const [copMes, setCopMes] = useState(now.getMonth() + 1);
+  const [copAño, setCopAño] = useState(now.getFullYear());
+  const [copLoading, setCopLoading] = useState(false);
+  const [copError, setCopError] = useState('');
 
   const applyPreset = (type) => {
     setPeriodoType(type);
@@ -310,6 +319,38 @@ const Reports = () => {
     URL.revokeObjectURL(url);
   };
 
+  const generateCopExcel = async () => {
+    setCopLoading(true);
+    setCopError('');
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/reports/cop-excel?mes=${copMes}&año=${copAño}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      if (!response.ok) {
+        const json = await response.json().catch(() => ({}));
+        throw new Error(json.message || `Error ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const mesStr = String(copMes).padStart(2, '0');
+      a.download = `COP_${mesStr}_${copAño}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setCopError(err.message || 'Error generando el archivo COP');
+    } finally {
+      setCopLoading(false);
+    }
+  };
+
   const presetLabel = { today: 'Hoy', yesterday: 'Ayer', week: 'Esta semana', month: 'Este mes', custom: 'Rango personalizado' };
 
   return (
@@ -383,6 +424,55 @@ const Reports = () => {
           {loading ? 'Generando...' : 'Generar Reporte'}
         </Button>
       </Paper>
+
+      {/* ── COP Excel (solo administracion y admin) ── */}
+      {(userRole === 'administracion' || userRole === 'admin') && (
+        <Paper sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0' }}>
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TableChart sx={{ color: '#2e7d32', fontSize: 20 }} />
+            Generar COP Excel (54 hojas)
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Genera el archivo <strong>COP_MM_AAAA.xlsx</strong> con fichas individuales por paciente, resumen mensual,
+            medicamentos, tiempos de sillón y previsiones. Solo disponible para el rol Administración.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Mes</InputLabel>
+              <Select
+                value={copMes}
+                onChange={e => setCopMes(Number(e.target.value))}
+                label="Mes"
+              >
+                {['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
+                ].map((m, i) => (
+                  <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Año"
+              type="number"
+              size="small"
+              value={copAño}
+              onChange={e => setCopAño(Number(e.target.value))}
+              inputProps={{ min: 2020, max: 2100 }}
+              sx={{ width: 100 }}
+            />
+            <Button
+              variant="contained"
+              color="success"
+              onClick={generateCopExcel}
+              disabled={copLoading}
+              startIcon={copLoading ? <CircularProgress size={18} color="inherit" /> : <Download />}
+            >
+              {copLoading ? 'Generando...' : 'Descargar COP Excel'}
+            </Button>
+          </Box>
+          {copError && <Alert severity="error" sx={{ mt: 2 }}>{copError}</Alert>}
+        </Paper>
+      )}
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
