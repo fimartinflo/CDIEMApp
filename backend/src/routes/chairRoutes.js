@@ -8,16 +8,17 @@ const allowRoles = require('../middleware/roles');
 router.use(authMiddleware);
 router.use(allowRoles('admin', 'enfermera'));
 
-// Crear sillón (solo admin)
-router.post('/', allowRoles('admin'), chairController.createChair);
+// Crear sillón (admin y enfermera)
+router.post('/', chairController.createChair);
 
-// Actualizar sillón (admin y enfermera pueden actualizar)
+// Actualizar sillón (admin y enfermera)
 router.put('/:id', chairController.updateChair);
 
-// Eliminar sillón (borrado lógico, solo admin)
-router.delete('/:id', allowRoles('admin'), chairController.deleteChair);
+// Eliminar sillón — borrado lógico (admin y enfermera)
+// El registro del sillón se mantiene en BD para que los informes históricos sigan funcionando
+router.delete('/:id', chairController.deleteChair);
 
-// Reiniciar sillón a disponible (solo admin)
-router.post('/:id/reset', allowRoles('admin'), chairController.resetChair);
+// Reiniciar sillón a disponible (admin y enfermera)
+router.post('/:id/reset', chairController.resetChair);
 
 module.exports = router;

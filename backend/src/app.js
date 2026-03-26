@@ -237,13 +237,14 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
     }
 
     const horaFin = new Date();
-    const duracionMinutos = Math.round((horaFin - new Date(session.horaInicio)) / 60000);
+    const duracionSegundos = Math.round((horaFin - new Date(session.horaInicio)) / 1000);
+    const duracionMin = Math.floor(duracionSegundos / 60);
 
     // Cerrar sesión
     await session.update({
       horaFin,
       estado: 'finalizada',
-      notas: `Atención completada. Duración: ${duracionMinutos} minutos`
+      notas: `Atención completada. Duración: ${duracionMin} minutos`
     }, { transaction });
 
     // Liberar sillón y actualizar estado del paciente
@@ -259,7 +260,7 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
       success: true,
       message: 'Sillón liberado exitosamente',
       data: {
-        duracionMinutos,
+        duracionSegundos,
         horaInicio: session.horaInicio,
         horaFin,
         paciente: session.Patient?.nombreCompleto || null
@@ -478,8 +479,8 @@ app.get('/api/patients/:id/history', auth, async (req, res) => {
     });
 
     const history = sessions.map(session => {
-      const duracionMinutos = session.horaFin
-        ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 60000)
+      const duracionSegundos = session.horaFin
+        ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 1000)
         : null;
       return {
         sessionId: session.id,
@@ -487,7 +488,7 @@ app.get('/api/patients/:id/history', auth, async (req, res) => {
         silla: session.Chair?.nombre,
         horaInicio: session.horaInicio,
         horaFin: session.horaFin,
-        duracionMinutos,
+        duracionSegundos,
         medicamentos: session.SessionMedications.map(sm => ({
           nombre: sm.Medication.nombre,
           cantidad: sm.cantidadAdministrada
@@ -518,8 +519,8 @@ app.get('/api/chairs/:id/history', auth, async (req, res) => {
     });
 
     const history = sessions.map(session => {
-      const duracionMinutos = session.horaFin
-        ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 60000)
+      const duracionSegundos = session.horaFin
+        ? Math.round((new Date(session.horaFin) - new Date(session.horaInicio)) / 1000)
         : null;
       return {
         sessionId: session.id,
@@ -527,7 +528,7 @@ app.get('/api/chairs/:id/history', auth, async (req, res) => {
         paciente: session.Patient?.nombreCompleto,
         horaInicio: session.horaInicio,
         horaFin: session.horaFin,
-        duracionMinutos,
+        duracionSegundos,
         medicamentos: session.SessionMedications.map(sm => ({
           nombre: sm.Medication.nombre,
           cantidad: sm.cantidadAdministrada

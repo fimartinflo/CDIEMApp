@@ -39,8 +39,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import esLocale from 'date-fns/locale/es';
 import inventoryService from '../services/inventoryService';
+import authService from '../services/authService';
 
 const Inventory = () => {
+  const userRole = authService.getCurrentUser()?.role;
+  const canWrite = userRole === 'admin' || userRole === 'administracion';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -208,13 +211,15 @@ const Inventory = () => {
             <Typography variant="h6">
               Total de medicamentos: {items.length}
             </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenDialog(true)}
-            >
-              Nuevo Medicamento
-            </Button>
+            {canWrite && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setOpenDialog(true)}
+              >
+                Nuevo Medicamento
+              </Button>
+            )}
           </Box>
         </Paper>
 
@@ -298,49 +303,53 @@ const Inventory = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setQuantityData({
-                                id: item.id,
-                                cantidad: 0,
-                                tipo: 'entrada',
-                                motivo: ''
-                              });
-                              setOpenQuantityDialog(true);
-                            }}
-                            color="primary"
-                          >
-                            <InventoryIcon />
-                          </IconButton>
-                          
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setEditItem({
-                                id: item.id,
-                                nombre: item.nombre,
-                                descripcion: item.descripcion,
-                                cantidad: item.cantidad,
-                                unidad: item.unidad,
-                                fechaExpiracion: item.fechaExpiracion ? new Date(item.fechaExpiracion) : null,
-                                proveedor: item.proveedor,
-                                minimoStock: item.minimoStock
-                              });
-                              setOpenEditDialog(true);
-                            }}
-                            color="warning"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDelete(item.id)}
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                          {canWrite && (
+                            <>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setQuantityData({
+                                    id: item.id,
+                                    cantidad: 0,
+                                    tipo: 'entrada',
+                                    motivo: ''
+                                  });
+                                  setOpenQuantityDialog(true);
+                                }}
+                                color="primary"
+                              >
+                                <InventoryIcon />
+                              </IconButton>
+
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setEditItem({
+                                    id: item.id,
+                                    nombre: item.nombre,
+                                    descripcion: item.descripcion,
+                                    cantidad: item.cantidad,
+                                    unidad: item.unidad,
+                                    fechaExpiracion: item.fechaExpiracion ? new Date(item.fechaExpiracion) : null,
+                                    proveedor: item.proveedor,
+                                    minimoStock: item.minimoStock
+                                  });
+                                  setOpenEditDialog(true);
+                                }}
+                                color="warning"
+                              >
+                                <EditIcon />
+                              </IconButton>
+
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDelete(item.id)}
+                                color="error"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

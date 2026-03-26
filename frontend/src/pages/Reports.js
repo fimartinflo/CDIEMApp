@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Box, Typography, Paper, Button, ButtonGroup, TextField, Grid,
+  Box, Typography, Paper, Button, TextField, Grid,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Collapse, IconButton, Chip, Card, CardContent, Dialog, DialogTitle,
   DialogContent, DialogActions, Alert, CircularProgress, Divider,
   Tooltip
 } from '@mui/material';
 import {
-  ExpandMore, ExpandLess, Print, Email, Download,
+  ExpandMore, ExpandLess, Print, Download,
   PeopleAlt, EventNote, AttachMoney, MedicalServices,
   Chair as ChairIcon, CalendarToday
 } from '@mui/icons-material';
@@ -18,6 +18,13 @@ import reportService from '../services/reportService';
 const clp = (n) => `$${(n || 0).toLocaleString('es-CL')}`;
 const fmtDate = (d) => d ? format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: es }) : '-';
 const fmtDateShort = (d) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: es }) : '-';
+const secToHMS = (s) => {
+  if (s == null) return '-';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
+};
 
 // ─── Diálogo: Informe individual de paciente ─────────────────────────────────
 const PatientReportDialog = ({ open, onClose, patientData }) => {
@@ -72,7 +79,7 @@ const PatientReportDialog = ({ open, onClose, patientData }) => {
               <Grid container spacing={1} sx={{ mb: 1 }}>
                 <Grid item xs={6} sm={3}><Typography variant="body2" color="text.secondary">Inicio</Typography><Typography variant="body2">{fmtDate(sesion.horaInicio)}</Typography></Grid>
                 <Grid item xs={6} sm={3}><Typography variant="body2" color="text.secondary">Fin</Typography><Typography variant="body2">{fmtDate(sesion.horaFin)}</Typography></Grid>
-                {sesion.duracionMinutos != null && <Grid item xs={6} sm={3}><Typography variant="body2" color="text.secondary">Duración</Typography><Typography variant="body2">{sesion.duracionMinutos} min</Typography></Grid>}
+                {sesion.duracionSegundos != null && <Grid item xs={6} sm={3}><Typography variant="body2" color="text.secondary">Duración</Typography><Typography variant="body2">{secToHMS(sesion.duracionSegundos)}</Typography></Grid>}
                 {sesion.notas && <Grid item xs={12}><Typography variant="body2" color="text.secondary">Notas</Typography><Typography variant="body2">{sesion.notas}</Typography></Grid>}
               </Grid>
 
@@ -155,7 +162,7 @@ const PatientRow = ({ paciente, onViewReport }) => {
                   <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
                     <Typography variant="body2"><strong>{sesion.sillon}</strong></Typography>
                     <Typography variant="body2" color="text.secondary">{fmtDate(sesion.horaInicio)}</Typography>
-                    {sesion.duracionMinutos != null && <Typography variant="body2" color="text.secondary">{sesion.duracionMinutos} min</Typography>}
+                    {sesion.duracionSegundos != null && <Typography variant="body2" color="text.secondary">{secToHMS(sesion.duracionSegundos)}</Typography>}
                     <Chip label={sesion.estado} size="small" color={sesion.estado === 'finalizada' ? 'success' : 'warning'} />
                   </Box>
                   {sesion.medicamentos.length > 0 && (
@@ -201,12 +208,6 @@ const Reports = () => {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [error, setError] = useState('');
-
-  // Email dialog
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailResult, setEmailResult] = useState(null);
 
   // Patient detail dialog
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
@@ -257,23 +258,6 @@ const Reports = () => {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!emailAddress) return;
-    setEmailLoading(true);
-    setEmailResult(null);
-    try {
-      const result = await reportService.sendEmail(emailAddress, startDate, endDate, reportData);
-      setEmailResult({ success: true, message: result.message });
-    } catch (err) {
-      setEmailResult({
-        success: false,
-        message: err.response?.data?.message || 'Error al enviar el email'
-      });
-    } finally {
-      setEmailLoading(false);
-    }
-  };
-
   const exportCSV = () => {
     if (!reportData) return;
     const rows = [];
@@ -295,7 +279,7 @@ const Reports = () => {
     reportData.pacientes.forEach(p => {
       rows.push([p.nombreCompleto, p.rut || p.pasaporte || '', p.prevision || '', p.sesiones.length, p.totalPaciente]);
       p.sesiones.forEach(s => {
-        rows.push(['', '', s.sillon, fmtDate(s.horaInicio), `${s.duracionMinutos || 0} min`, '', clp(s.totalSesion)]);
+        rows.push(['', '', s.sillon, fmtDate(s.horaInicio), secToHMS(s.duracionSegundos), '', clp(s.totalSesion)]);
         s.medicamentos.forEach(m => {
           rows.push(['', '', '', m.nombre, m.cantidad, m.unidad, clp(m.precioUnitario), clp(m.subtotal)]);
         });
@@ -311,9 +295,9 @@ const Reports = () => {
     rows.push([]);
 
     rows.push(['USO DE SILLONES']);
-    rows.push(['Sillón', 'Total Sesiones', 'Tiempo Total (min)']);
+    rows.push(['Sillón', 'Total Sesiones', 'Tiempo Total (HH:MM:SS)']);
     reportData.sillones.forEach(s => {
-      rows.push([s.nombre, s.totalSesiones, s.minutosTotales]);
+      rows.push([s.nombre, s.totalSesiones, secToHMS(s.segundosTotales)]);
     });
 
     const csv = rows.map(r => r.map(c => `"${c}"`).join(sep)).join('\n');
@@ -333,9 +317,9 @@ const Reports = () => {
       {/* Estilos de impresión */}
       <style>{`
         @media print {
-          body > * { display: none !important; }
-          #report-print-area, #patient-report-print { display: block !important; }
-          #report-print-area { position: fixed; top: 0; left: 0; width: 100%; }
+          body * { visibility: hidden; }
+          #patient-report-print, #patient-report-print * { visibility: visible; }
+          #patient-report-print { position: fixed; top: 0; left: 0; width: 100%; }
         }
       `}</style>
 
@@ -417,14 +401,8 @@ const Reports = () => {
 
           {/* Botones de acción */}
           <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }} className="no-print">
-            <Button variant="outlined" startIcon={<Print />} onClick={() => window.print()}>
-              Imprimir / PDF
-            </Button>
             <Button variant="outlined" startIcon={<Download />} onClick={exportCSV}>
-              Exportar CSV
-            </Button>
-            <Button variant="outlined" startIcon={<Email />} onClick={() => setEmailOpen(true)}>
-              Enviar por Email
+              Exportar Excel
             </Button>
           </Box>
 
@@ -557,7 +535,7 @@ const Reports = () => {
                         <TableCell><strong>{s.nombre}</strong></TableCell>
                         <TableCell>{s.ubicacion || '-'}</TableCell>
                         <TableCell align="center">{s.totalSesiones}</TableCell>
-                        <TableCell align="center">{s.minutosTotales} min</TableCell>
+                        <TableCell align="center">{secToHMS(s.segundosTotales)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -567,46 +545,6 @@ const Reports = () => {
           </Paper>
         </Box>
       )}
-
-      {/* Diálogo: Enviar por email */}
-      <Dialog open={emailOpen} onClose={() => { setEmailOpen(false); setEmailResult(null); }} maxWidth="sm" fullWidth>
-        <DialogTitle>Enviar Reporte por Email</DialogTitle>
-        <DialogContent>
-          {emailResult && (
-            <Alert severity={emailResult.success ? 'success' : 'error'} sx={{ mb: 2 }}>
-              {emailResult.message}
-            </Alert>
-          )}
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Se enviará el reporte del período <strong>{fmtDateShort(startDate)} — {fmtDateShort(endDate)}</strong>
-          </Typography>
-          <TextField
-            fullWidth
-            label="Correo destinatario"
-            type="email"
-            value={emailAddress}
-            onChange={e => setEmailAddress(e.target.value)}
-            sx={{ mt: 2 }}
-            placeholder="ejemplo@clinica.cl"
-          />
-          <Alert severity="info" sx={{ mt: 2 }} icon={false}>
-            <Typography variant="body2">
-              Para habilitar el envío de emails, configure las variables <code>SMTP_*</code> en el archivo <code>backend/.env</code>.
-            </Typography>
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setEmailOpen(false); setEmailResult(null); }}>Cancelar</Button>
-          <Button
-            onClick={handleSendEmail}
-            variant="contained"
-            disabled={!emailAddress || emailLoading}
-            startIcon={emailLoading ? <CircularProgress size={16} color="inherit" /> : <Email />}
-          >
-            {emailLoading ? 'Enviando...' : 'Enviar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Diálogo: Informe del paciente */}
       {patientDialogOpen && (

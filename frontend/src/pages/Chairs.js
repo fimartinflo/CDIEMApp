@@ -294,8 +294,11 @@ const Chairs = () => {
 
   const calculateDuration = (horaInicio) => {
     if (!horaInicio) return '';
-    const minutos = Math.round((new Date() - new Date(horaInicio)) / 60000);
-    return `${minutos} min`;
+    const s = Math.floor((new Date() - new Date(horaInicio)) / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
   };
 
   return (
@@ -367,11 +370,12 @@ const Chairs = () => {
                     {/* Paciente actual si está ocupado */}
                     {chair.estado === 'ocupado' && chair.pacienteActual && (
                       <Paper sx={{ p: 1.5, mt: 1, bgcolor: '#fff3e0' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                          <PersonIcon sx={{ mr: 0.5, fontSize: 16, color: 'warning.main' }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, flexWrap: 'wrap' }}>
+                          <PersonIcon sx={{ fontSize: 16, color: 'warning.main' }} />
                           <Typography variant="body2" fontWeight="medium">
                             {chair.pacienteActual}
                           </Typography>
+                          <Chip label="en tratamiento" size="small" color="warning" sx={{ ml: 'auto' }} />
                         </Box>
                         {chair.horaInicio && (
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -389,8 +393,8 @@ const Chairs = () => {
                       </Paper>
                     )}
 
-                    {/* Botones de acción */}
-                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {/* Botones clínicos */}
+                    <Box sx={{ mt: 2 }}>
                       {chair.estado === 'disponible' && (
                         <Button
                           variant="contained"
@@ -403,13 +407,13 @@ const Chairs = () => {
                         </Button>
                       )}
                       {chair.estado === 'ocupado' && (
-                        <>
+                        <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                           <Button
                             variant="outlined"
                             color="secondary"
                             size="small"
                             startIcon={<MedIcon />}
-                            sx={{ flex: 1 }}
+                            fullWidth
                             onClick={() => handleAddMedOpen(chair)}
                           >
                             + Medicamento
@@ -418,13 +422,17 @@ const Chairs = () => {
                             variant="outlined"
                             color="error"
                             size="small"
-                            sx={{ flex: 1 }}
+                            fullWidth
                             onClick={() => handleRelease(chair.id)}
                           >
                             Liberar
                           </Button>
-                        </>
+                        </Box>
                       )}
+                    </Box>
+
+                    {/* Botones CRUD */}
+                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
                       <Tooltip title="Editar sillón">
                         <IconButton size="small" color="warning" onClick={() => {
                           setEditChair({

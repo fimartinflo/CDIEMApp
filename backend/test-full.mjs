@@ -172,7 +172,7 @@ assert('Estado en vivo de sillones', r.data.success, JSON.stringify(r.data));
 // 24. Liberar sillón
 r = await req('POST', `/chairs/${chairId}/release`);
 assert('Liberar sillón', r.data.success, JSON.stringify(r.data));
-assert('Duración calculada al liberar', r.data.data?.duracionMinutos !== undefined, JSON.stringify(r.data.data));
+assert('Duración calculada al liberar', r.data.data?.duracionSegundos !== undefined, JSON.stringify(r.data.data));
 
 // 25. Sillón vuelve a disponible
 r = await req('GET', '/chairs');
@@ -286,6 +286,19 @@ assert('Administracion NO puede asignar sillón → 403', r.status === 403, `sta
 // administracion SÍ puede acceder a reportes
 r = await req('GET', `/reports?startDate=${today}&endDate=${today}`);
 assert('Administracion SÍ puede ver reportes', r.data.success, JSON.stringify(r.data));
+
+// administracion SÍ puede ver inventario
+r = await req('GET', '/inventory');
+assert('Administracion SÍ puede ver inventario', r.data.success, JSON.stringify(r.data));
+
+// administracion SÍ puede crear medicamento
+r = await req('POST', '/inventory', { nombre: 'Test Adm', cantidad: 5, unidad: 'amp', minimoStock: 2 });
+assert('Administracion SÍ puede crear medicamento', r.data.success, JSON.stringify(r.data));
+
+// enfermera NO puede crear medicamento
+token = enfermeraToken;
+r = await req('POST', '/inventory', { nombre: 'Test Enfermera', cantidad: 1, unidad: 'amp', minimoStock: 1 });
+assert('Enfermera NO puede crear medicamento → 403', r.status === 403, `status=${r.status}`);
 
 token = adminToken; // restaurar token admin
 
