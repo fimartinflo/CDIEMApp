@@ -1,5 +1,8 @@
 const { Op } = require('sequelize');
 const { ChairSession, Patient, Chair, Medication, SessionMedication } = require('../models');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 // Crea el transporter de nodemailer solo si SMTP está configurado
 const createTransporter = () => {
@@ -234,6 +237,69 @@ const reportController = {
       });
     } catch (error) {
       next(error);
+    }
+  },
+
+  // POST /api/reports/cop-excel?mes=3&año=2026
+  generateCopExcel: async (req, res, next) => {
+    try {
+      const mes  = parseInt(req.query.mes  || req.body.mes);
+      const año  = parseInt(req.query.año  || req.body.año);
+
+      if (!mes || !año || mes < 1 || mes > 12 || año < 2000 || año > 2100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Se requieren mes (1-12) y año válidos'
+        });
+      }
+
+      // Rango completo del mes
+      const startISO = `${año}-${String(mes).padStart(2, '0')}-01T00:00:00`;
+      const nextMes  = mes === 12 ? 1 : mes + 1;
+      const nextAño  = mes === 12 ? año + 1 : año;
+      const endISO   = `${nextAño}-${String(nextMes).padStart(2, '0')}-01T00:00:00`;
+
+      const sessions = await ChairSession.findAll({
+        where: {
+          horaInicio: { [Op.gte]: new Date(startISO), [Op.lt]: new Date(endISO) }
+        },
+        include: reportIncludes,
+        order: [['horaInicio', 'ASC']]
+      });
+
+      const startDateStr = `${año}-${String(mes).padStart(2, '0')}-01`;
+      const endDateStr   = `${año}-${String(mes).padStart(2, '0')}-${new Date(nextAño, nextMes - 1, 0).getDate()}`;
+      const reportData   = buildReportData(sessions, startDateStr, endDateStr);
+
+      // Archivos temporales
+      const stamp      = Date.now();
+      const tmpInput   = `/tmp/cop_input_${stamp}.json`;
+      const mesStr     = String(mes).padStart(2, '0');
+      const tmpOutput  = `/tmp/COP_${mesStr}_${año}_${stamp}.xlsx`;
+      const scriptPath = path.join(__dirname, '../../scripts/generate_cop.py');
+
+      fs.writeFileSync(tmpInput, JSON.stringify({ data: reportData, mes, año }), 'utf8');
+
+      await new Promise((resolve, reject) => {
+        const proc = spawn('python3', [scriptPath, tmpInput, tmpOutput]);
+        let stderr = '';
+        proc.stderr.on('data', d => { stderr += d.toString(); });
+        proc.on('close', code => {
+          if (code !== 0) reject(new Error(stderr || `Python salió con código ${code}`));
+          else resolve();
+        });
+      });
+
+      const fileName = `COP_${mesStr}_${año}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.sendFile(tmpOutput, { root: '/' }, (err) => {
+        try { fs.unlinkSync(tmpInput); } catch {}
+        try { fs.unlinkSync(tmpOutput); } catch {}
+        if (err) console.error('Error enviando archivo COP:', err);
+      });
+    } catch (err) {
+      next(err);
     }
   },
 
