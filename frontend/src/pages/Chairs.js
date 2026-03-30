@@ -77,6 +77,9 @@ const Chairs = () => {
   // Reloj en tiempo real para mostrar duración actualizada cada segundo
   const [now, setNow] = useState(new Date());
 
+  // Diálogo de confirmación (reemplaza window.confirm)
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
+
   useEffect(() => {
     loadChairs();
     loadPatients();
@@ -101,6 +104,16 @@ const Chairs = () => {
       setError(err.response?.data?.message || 'Error al cargar sillones');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Refresca sillones sin mostrar el spinner de carga (para post-acción)
+  const silentLoadChairs = async () => {
+    try {
+      const result = await chairService.getChairs();
+      setChairs(result.data || []);
+    } catch (err) {
+      // error silencioso — no interrumpir la UI
     }
   };
 
@@ -136,7 +149,7 @@ const Chairs = () => {
       await chairService.createChair(newChair);
       setSuccess('Sillón creado exitosamente');
       setOpenDialog(false);
-      loadChairs();
+      silentLoadChairs();
     } catch (err) {
       setError(err.response?.data?.message || 'Error al crear sillón');
     }
@@ -147,22 +160,27 @@ const Chairs = () => {
       await chairService.updateChair(editChair.id, editChair);
       setSuccess('Sillón actualizado exitosamente');
       setOpenEditDialog(false);
-      loadChairs();
+      silentLoadChairs();
     } catch (err) {
       setError(err.response?.data?.message || 'Error al actualizar sillón');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Está seguro de eliminar este sillón?')) {
-      try {
-        await chairService.deleteChair(id);
-        setSuccess('Sillón eliminado exitosamente');
-        loadChairs();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Error al eliminar sillón');
+  const handleDelete = (id) => {
+    setConfirmDialog({
+      open: true,
+      message: '¿Está seguro de eliminar este sillón?',
+      onConfirm: async () => {
+        setConfirmDialog({ open: false, message: '', onConfirm: null });
+        try {
+          await chairService.deleteChair(id);
+          setSuccess('Sillón eliminado exitosamente');
+          silentLoadChairs();
+        } catch (err) {
+          setError(err.response?.data?.message || 'Error al eliminar sillón');
+        }
       }
-    }
+    });
   };
 
   // ==================== Asignación de paciente ====================
@@ -225,7 +243,7 @@ const Chairs = () => {
 
       setSuccess('Paciente asignado exitosamente');
       setOpenAssignDialog(false);
-      loadChairs();
+      silentLoadChairs();
       loadInventory();
     } catch (err) {
       setError(err.response?.data?.message || 'Error al asignar paciente');
@@ -254,7 +272,7 @@ const Chairs = () => {
       });
       setSuccess('Medicamento administrado exitosamente');
       setOpenMedDialog(false);
-      loadChairs();
+      silentLoadChairs();
       loadInventory();
     } catch (err) {
       setError(err.response?.data?.message || 'Error al administrar medicamento');
@@ -263,16 +281,21 @@ const Chairs = () => {
 
   // ==================== Liberar sillón ====================
 
-  const handleRelease = async (id) => {
-    if (window.confirm('¿Está seguro de liberar este sillón?')) {
-      try {
-        await chairService.releaseChair(id);
-        setSuccess('Sillón liberado exitosamente');
-        loadChairs();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Error al liberar sillón');
+  const handleRelease = (id) => {
+    setConfirmDialog({
+      open: true,
+      message: '¿Está seguro de liberar este sillón?',
+      onConfirm: async () => {
+        setConfirmDialog({ open: false, message: '', onConfirm: null });
+        try {
+          await chairService.releaseChair(id);
+          setSuccess('Sillón liberado exitosamente');
+          silentLoadChairs();
+        } catch (err) {
+          setError(err.response?.data?.message || 'Error al liberar sillón');
+        }
       }
-    }
+    });
   };
 
   // ==================== Helpers visuales ====================
@@ -701,6 +724,16 @@ const Chairs = () => {
           <Button onClick={handleAddMed} variant="contained" disabled={!addMedId}>
             Administrar
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo de confirmación */}
+      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}>
+        <DialogTitle>Confirmar acción</DialogTitle>
+        <DialogContent>{confirmDialog.message}</DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}>Cancelar</Button>
+          <Button onClick={confirmDialog.onConfirm} color="error" variant="contained">Confirmar</Button>
         </DialogActions>
       </Dialog>
 

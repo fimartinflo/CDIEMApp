@@ -104,8 +104,8 @@ const patientController = {
     try {
       const patientData = req.body;
 
-      if (patientData.tipoIdentificacion === 'rut' && patientData.rut) {
-        if (!validateRUT(patientData.rut)) {
+      if (patientData.tipoIdentificacion === 'rut') {
+        if (!patientData.rut || !validateRUT(patientData.rut)) {
           return res.status(400).json({
             success: false,
             message: 'RUT chileno inválido'
@@ -159,8 +159,8 @@ const patientController = {
         return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
       }
 
-      if (patientData.tipoIdentificacion === 'rut' && patientData.rut) {
-        if (!validateRUT(patientData.rut)) {
+      if (patientData.tipoIdentificacion === 'rut') {
+        if (!patientData.rut || !validateRUT(patientData.rut)) {
           return res.status(400).json({
             success: false,
             message: 'RUT chileno inválido'
