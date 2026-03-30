@@ -53,6 +53,7 @@ const Inventory = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openQuantityDialog, setOpenQuantityDialog] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
   
   // Estados para formularios
   const [newItem, setNewItem] = useState({
@@ -142,16 +143,21 @@ const Inventory = () => {
   };
 
   // Eliminar medicamento
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Está seguro de eliminar este medicamento?')) {
-      try {
-        await inventoryService.deleteItem(id);
-        setSuccess('Medicamento eliminado exitosamente');
-        loadItems();
-      } catch (err) {
-        setError('Error al eliminar medicamento');
+  const handleDelete = (id) => {
+    setConfirmDialog({
+      open: true,
+      message: '¿Está seguro de eliminar este medicamento?',
+      onConfirm: async () => {
+        setConfirmDialog({ open: false, message: '', onConfirm: null });
+        try {
+          await inventoryService.deleteItem(id);
+          setSuccess('Medicamento eliminado exitosamente');
+          loadItems();
+        } catch (err) {
+          setError('Error al eliminar medicamento');
+        }
       }
-    }
+    });
   };
 
   // Actualizar cantidad
@@ -584,6 +590,16 @@ const Inventory = () => {
           <DialogActions>
             <Button onClick={() => setOpenQuantityDialog(false)}>Cancelar</Button>
             <Button onClick={handleUpdateQuantity} variant="contained">Actualizar</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Diálogo de confirmación */}
+        <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}>
+          <DialogTitle>Confirmar acción</DialogTitle>
+          <DialogContent>{confirmDialog.message}</DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}>Cancelar</Button>
+            <Button onClick={confirmDialog.onConfirm} color="error" variant="contained">Confirmar</Button>
           </DialogActions>
         </Dialog>
 

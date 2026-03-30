@@ -16,6 +16,16 @@ const reportService = {
     return response.data.data;
   },
 
+  // Descargar COP Excel mensual (blob)
+  generateCopExcel: async (mes, año) => {
+    const response = await api.post('/reports/cop-excel', null, {
+      params: { mes, año },
+      responseType: 'blob',
+      timeout: 30000
+    });
+    return response.data;
+  },
+
   // Enviar reporte por email
   sendEmail: async (recipientEmail, startDate, endDate, reportData, subject) => {
     const response = await api.post('/reports/email', {

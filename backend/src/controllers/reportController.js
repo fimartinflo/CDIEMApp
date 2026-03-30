@@ -3,6 +3,11 @@ const { ChairSession, Patient, Chair, Medication, SessionMedication } = require(
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { error: errorResponse } = require('../utils/response');
+
+const GENERATE_COP_SCRIPT = path.join(__dirname, '../../scripts/generate_cop.py');
+const PYTHON_BIN = process.env.PYTHON_BIN || 'python3';
+const PYTHON_TIMEOUT_MS = parseInt(process.env.PYTHON_TIMEOUT_MS) || 60000;
 
 // Crea el transporter de nodemailer solo si SMTP está configurado
 const createTransporter = () => {
@@ -240,63 +245,75 @@ const reportController = {
     }
   },
 
-  // POST /api/reports/cop-excel?mes=3&año=2026
   generateCopExcel: async (req, res, next) => {
     try {
       const mes  = parseInt(req.query.mes  || req.body.mes);
       const año  = parseInt(req.query.año  || req.body.año);
 
       if (!mes || !año || mes < 1 || mes > 12 || año < 2000 || año > 2100) {
-        return res.status(400).json({
-          success: false,
-          message: 'Se requieren mes (1-12) y año válidos'
-        });
+        return errorResponse(res, 'Se requieren mes (1-12) y año válidos', 'INVALID_PARAMS', 400);
       }
 
-      // Rango completo del mes
-      const startISO = `${año}-${String(mes).padStart(2, '0')}-01T00:00:00`;
-      const nextMes  = mes === 12 ? 1 : mes + 1;
-      const nextAño  = mes === 12 ? año + 1 : año;
-      const endISO   = `${nextAño}-${String(nextMes).padStart(2, '0')}-01T00:00:00`;
+      const mesStr  = String(mes).padStart(2, '0');
+      const nextMes = mes === 12 ? 1 : mes + 1;
+      const nextAño = mes === 12 ? año + 1 : año;
 
       const sessions = await ChairSession.findAll({
         where: {
-          horaInicio: { [Op.gte]: new Date(startISO), [Op.lt]: new Date(endISO) }
+          horaInicio: {
+            [Op.gte]: new Date(`${año}-${mesStr}-01T00:00:00`),
+            [Op.lt]:  new Date(`${nextAño}-${String(nextMes).padStart(2, '0')}-01T00:00:00`)
+          }
         },
         include: reportIncludes,
         order: [['horaInicio', 'ASC']]
       });
 
-      const startDateStr = `${año}-${String(mes).padStart(2, '0')}-01`;
-      const endDateStr   = `${año}-${String(mes).padStart(2, '0')}-${new Date(nextAño, nextMes - 1, 0).getDate()}`;
+      const startDateStr = `${año}-${mesStr}-01`;
+      const endDateStr   = `${año}-${mesStr}-${new Date(nextAño, nextMes - 1, 0).getDate()}`;
       const reportData   = buildReportData(sessions, startDateStr, endDateStr);
 
-      // Archivos temporales
-      const stamp      = Date.now();
-      const tmpInput   = `/tmp/cop_input_${stamp}.json`;
-      const mesStr     = String(mes).padStart(2, '0');
-      const tmpOutput  = `/tmp/COP_${mesStr}_${año}_${stamp}.xlsx`;
-      const scriptPath = path.join(__dirname, '../../scripts/generate_cop.py');
+      const stamp     = Date.now();
+      const tmpInput  = `/tmp/cop_input_${stamp}.json`;
+      const tmpOutput = `/tmp/COP_${mesStr}_${año}_${stamp}.xlsx`;
 
       fs.writeFileSync(tmpInput, JSON.stringify({ data: reportData, mes, año }), 'utf8');
 
-      await new Promise((resolve, reject) => {
-        const proc = spawn('python3', [scriptPath, tmpInput, tmpOutput]);
-        let stderr = '';
-        proc.stderr.on('data', d => { stderr += d.toString(); });
-        proc.on('close', code => {
-          if (code !== 0) reject(new Error(stderr || `Python salió con código ${code}`));
-          else resolve();
+      try {
+        await new Promise((resolve, reject) => {
+          const proc = spawn(PYTHON_BIN, [GENERATE_COP_SCRIPT, tmpInput, tmpOutput]);
+          let stderr = '';
+
+          // Timeout de seguridad: mata el proceso si supera el límite
+          const timer = setTimeout(() => {
+            proc.kill('SIGTERM');
+            reject(new Error(`El proceso Python superó el tiempo límite (${PYTHON_TIMEOUT_MS / 1000}s)`));
+          }, PYTHON_TIMEOUT_MS);
+
+          proc.stderr.on('data', d => { stderr += d.toString(); });
+          proc.on('close', code => {
+            clearTimeout(timer);
+            if (code !== 0) reject(new Error(stderr || `Python salió con código ${code}`));
+            else resolve();
+          });
+          proc.on('error', err => {
+            clearTimeout(timer);
+            reject(new Error(`No se pudo iniciar Python (${PYTHON_BIN}): ${err.message}`));
+          });
         });
-      });
+      } catch (spawnErr) {
+        try { fs.unlinkSync(tmpInput); } catch (e) { console.warn('Cleanup tmpInput failed:', e.message); }
+        throw spawnErr;
+      }
 
       const fileName = `COP_${mesStr}_${año}.xlsx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.sendFile(tmpOutput, { root: '/' }, (err) => {
-        try { fs.unlinkSync(tmpInput); } catch {}
-        try { fs.unlinkSync(tmpOutput); } catch {}
-        if (err) console.error('Error enviando archivo COP:', err);
+      res.sendFile(tmpOutput, { root: '/' }, (sendErr) => {
+        [tmpInput, tmpOutput].forEach(f => {
+          try { fs.unlinkSync(f); } catch (e) { console.warn(`Cleanup failed (${f}):`, e.message); }
+        });
+        if (sendErr) console.error('Error enviando archivo COP:', sendErr);
       });
     } catch (err) {
       next(err);

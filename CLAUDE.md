@@ -332,6 +332,12 @@ npm run build    # Build de producción
 - ✅ Scripts de producción: `ecosystem.config.js` (PM2), `nginx.conf.example`
 - ✅ `reset-passwords.js`: recuperación de credenciales sin borrar datos
 - ✅ Suite de 63 tests de integración — 63/63 pasando
+- ✅ **32 tests frontend** (Jest + RTL): Login, Dashboard, Patients, Chairs, Inventory — 32/32 pasando
+- ✅ **RUT edge case fix**: `createPatient`/`updatePatient` rechazan RUT vacío con `tipoIdentificacion='rut'`
+- ✅ **Refresco silencioso de sillones**: `silentLoadChairs()` actualiza sin spinner tras acciones
+- ✅ **MUI confirm dialogs**: `window.confirm()` reemplazado en Chairs.js e Inventory.js
+- ✅ **PYTHON_BIN configurable**: `process.env.PYTHON_BIN || 'python3'` en reportController.js
+- ✅ **Timeout proceso Python**: `PYTHON_TIMEOUT_MS` (default 60s), mata el proceso con `SIGTERM`
 
 ### Variables de Entorno (producción)
 
@@ -341,6 +347,10 @@ PORT=3001
 JWT_SECRET=<secret_seguro_min_32_chars>
 CORS_ORIGIN=https://tu-dominio.cl
 NODE_ENV=production
+
+# Proceso Python para COP Excel (opcionales — defaults razonables)
+# PYTHON_BIN=python3
+# PYTHON_TIMEOUT_MS=60000
 ```
 
 **Frontend (`frontend/.env.production`):**
@@ -349,7 +359,6 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
 ### Pendiente
-- Tests frontend
 - Migraciones Sequelize en lugar de `sync()`
 - Migración futura a base de datos online (PostgreSQL/MySQL)
 
@@ -374,4 +383,4 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 
 ---
 
-*Última actualización: 2026-03-25 — Variables de entorno para producción, ecosystem.config.js (PM2), nginx.conf.example*
+*Última actualización: 2026-03-30 — Tests frontend (32/32), fix RUT edge case, silent refresh sillones, MUI confirm dialogs, PYTHON_BIN/PYTHON_TIMEOUT_MS configurables*

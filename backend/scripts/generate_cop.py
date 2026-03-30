@@ -27,15 +27,17 @@ GRAY_ROW    = "F2F2F2"
 WHITE       = "FFFFFF"
 
 # ── Helpers de estilo ─────────────────────────────────────────────────────────
-def _thin_side():
-    return Side(style="thin", color="BFBFBF")
-
-def _thin_border():
-    s = _thin_side()
-    return Border(left=s, right=s, top=s, bottom=s)
-
 def _fill(hex_color):
     return PatternFill(start_color=hex_color, end_color=hex_color, fill_type="solid")
+
+# Objetos de estilo cacheados a nivel de módulo (evitan realocar por celda)
+_THIN_SIDE   = Side(style="thin", color="BFBFBF")
+THIN_BORDER  = Border(left=_THIN_SIDE, right=_THIN_SIDE, top=_THIN_SIDE, bottom=_THIN_SIDE)
+FILL_WHITE   = _fill(WHITE)
+FILL_GRAY    = _fill(GRAY_ROW)
+
+# Anchos de columna compartidos entre ficha con paciente y ficha vacía
+FICHA_COL_WIDTHS = [30, 12, 10, 14, 14, 14]
 
 def _font(bold=False, color="000000", size=10, italic=False):
     return Font(bold=bold, color=color, size=size, italic=italic)
@@ -66,17 +68,17 @@ def write_header_row(ws, row, headers, hex_bg, font_color="FFFFFF", row_height=1
         cell.font = _font(bold=True, color=font_color, size=9)
         cell.fill = _fill(hex_bg)
         cell.alignment = _align(h="center", wrap=True)
-        cell.border = _thin_border()
+        cell.border = THIN_BORDER
 
 def write_data_row(ws, row, values, alt=False, number_cols=None):
-    bg = GRAY_ROW if alt else WHITE
+    fill = FILL_GRAY if alt else FILL_WHITE
     number_cols = number_cols or []
     ws.row_dimensions[row].height = 15
     for col, v in enumerate(values, 1):
         cell = ws.cell(row=row, column=col, value=v)
-        cell.fill = _fill(bg)
+        cell.fill = fill
         cell.alignment = _align(h="right" if col in number_cols else "center", wrap=True)
-        cell.border = _thin_border()
+        cell.border = THIN_BORDER
         if col in number_cols and isinstance(v, (int, float)):
             cell.number_format = '#,##0'
 
@@ -122,13 +124,13 @@ def build_resumen(ws, data, mes, año):
         r = row + 1 + i
         ws.row_dimensions[r].height = 15
         label_cell = ws.cell(row=r, column=1, value=label)
-        label_cell.fill = _fill(GRAY_ROW if i % 2 == 0 else WHITE)
+        label_cell.fill = (FILL_GRAY if i % 2 == 0 else FILL_WHITE)
         label_cell.alignment = _align(h="left")
-        label_cell.border = _thin_border()
+        label_cell.border = THIN_BORDER
         val_cell = ws.cell(row=r, column=2, value=val)
-        val_cell.fill = _fill(GRAY_ROW if i % 2 == 0 else WHITE)
+        val_cell.fill = (FILL_GRAY if i % 2 == 0 else FILL_WHITE)
         val_cell.alignment = _align(h="right")
-        val_cell.border = _thin_border()
+        val_cell.border = THIN_BORDER
         if isinstance(val, (int, float)):
             val_cell.number_format = '#,##0'
 
@@ -209,22 +211,20 @@ def build_hora_sillon(ws, data, mes, año):
     write_header_row(ws, row, ["Sillón", "Paciente", "Fecha", "Hora Inicio", "Hora Fin", "Duración (HH:MM:SS)"], SLATE)
     row += 1
 
-    idx = 0
-    for p in data["pacientes"]:
-        for s in p["sesiones"]:
-            d_ini, h_ini = short_datetime(s.get("horaInicio", ""))
-            _, h_fin = short_datetime(s.get("horaFin", ""))
-            write_data_row(ws, row, [
-                s.get("sillon", ""),
-                p["nombreCompleto"],
-                d_ini,
-                h_ini,
-                h_fin,
-                sec_to_hms(s.get("duracionSegundos"))
-            ], alt=(idx % 2 == 0))
-            ws.cell(row=row, column=2).alignment = _align(h="left")
-            row += 1
-            idx += 1
+    all_sessions = ((p, s) for p in data["pacientes"] for s in p["sesiones"])
+    for idx, (p, s) in enumerate(all_sessions):
+        d_ini, h_ini = short_datetime(s.get("horaInicio", ""))
+        _, h_fin = short_datetime(s.get("horaFin", ""))
+        write_data_row(ws, row, [
+            s.get("sillon", ""),
+            p["nombreCompleto"],
+            d_ini,
+            h_ini,
+            h_fin,
+            sec_to_hms(s.get("duracionSegundos"))
+        ], alt=(idx % 2 == 0))
+        ws.cell(row=row, column=2).alignment = _align(h="left")
+        row += 1
 
     if not data["pacientes"]:
         ws.cell(row=row, column=1, value="Sin sesiones registradas en este período").font = _font(italic=True, color="999999")
@@ -322,12 +322,12 @@ def build_ficha(ws, paciente, ficha_num, mes, año):
         lc = ws.cell(row=row, column=1, value=label)
         lc.font = _font(bold=True, size=9)
         lc.fill = _fill(BLUE_LIGHT)
-        lc.border = _thin_border()
+        lc.border = THIN_BORDER
         lc.alignment = _align(h="right")
         vc = ws.cell(row=row, column=2, value=val)
         vc.font = _font(size=9)
         vc.alignment = _align(h="left")
-        vc.border = _thin_border()
+        vc.border = THIN_BORDER
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
         row += 1
 
@@ -341,7 +341,7 @@ def build_ficha(ws, paciente, ficha_num, mes, año):
     for idx, sesion in enumerate(paciente.get("sesiones", [])):
         # Sub-header de la sesión
         d_ini, h_ini = short_datetime(sesion.get("horaInicio", ""))
-        d_fin, h_fin = short_datetime(sesion.get("horaFin", ""))
+        _, h_fin = short_datetime(sesion.get("horaFin", ""))
         ses_label = f"Sesión #{idx+1}  •  {sesion.get('sillon','?')}  •  {d_ini} {h_ini}–{h_fin}"
         write_title(ws, row, ses_label, SLATE_LIGHT, font_color="FFFFFF", size=9)
         row += 1
@@ -395,7 +395,7 @@ def build_ficha(ws, paciente, ficha_num, mes, año):
     grand.number_format = '#,##0'
     grand.alignment = _align(h="right")
 
-    for col, w in enumerate([30, 12, 10, 14, 14, 14], 1):
+    for col, w in enumerate(FICHA_COL_WIDTHS, 1):
         set_col_width(ws, col, w)
 
 
@@ -406,7 +406,7 @@ def build_ficha_vacia(ws, ficha_num):
     ws.cell(row=3, column=1, value="Esta ficha no tiene paciente asignado para el período seleccionado.")
     ws.cell(row=3, column=1).font = _font(italic=True, color="AAAAAA", size=9)
     ws.merge_cells("A3:F3")
-    for col, w in enumerate([30, 12, 10, 14, 14, 14], 1):
+    for col, w in enumerate(FICHA_COL_WIDTHS, 1):
         set_col_width(ws, col, w)
 
 

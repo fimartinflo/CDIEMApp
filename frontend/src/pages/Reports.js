@@ -16,6 +16,18 @@ import { es } from 'date-fns/locale';
 import reportService from '../services/reportService';
 import authService from '../services/authService';
 
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 const clp = (n) => `$${(n || 0).toLocaleString('es-CL')}`;
 const fmtDate = (d) => d ? format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: es }) : '-';
 const fmtDateShort = (d) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: es }) : '-';
@@ -216,10 +228,9 @@ const Reports = () => {
   const [patientReportData, setPatientReportData] = useState(null);
   const [patientLoading, setPatientLoading] = useState(false);
 
-  // COP Excel
-  const now = new Date();
-  const [copMes, setCopMes] = useState(now.getMonth() + 1);
-  const [copAño, setCopAño] = useState(now.getFullYear());
+  // COP Excel — inicializado al mes/año actual al montar el componente
+  const [copMes, setCopMes] = useState(() => new Date().getMonth() + 1);
+  const [copAño, setCopAño] = useState(() => new Date().getFullYear());
   const [copLoading, setCopLoading] = useState(false);
   const [copError, setCopError] = useState('');
 
@@ -311,41 +322,17 @@ const Reports = () => {
 
     const csv = rows.map(r => r.map(c => `"${c}"`).join(sep)).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte-cdiem-${startDate}-${endDate}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `reporte-cdiem-${startDate}-${endDate}.csv`);
   };
 
   const generateCopExcel = async () => {
     setCopLoading(true);
     setCopError('');
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/reports/cop-excel?mes=${copMes}&año=${copAño}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      if (!response.ok) {
-        const json = await response.json().catch(() => ({}));
-        throw new Error(json.message || `Error ${response.status}`);
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const mesStr = String(copMes).padStart(2, '0');
-      a.download = `COP_${mesStr}_${copAño}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const blob = await reportService.generateCopExcel(copMes, copAño);
+      downloadBlob(blob, `COP_${String(copMes).padStart(2, '0')}_${copAño}.xlsx`);
     } catch (err) {
-      setCopError(err.message || 'Error generando el archivo COP');
+      setCopError(err.response?.data?.message || err.message || 'Error generando el archivo COP');
     } finally {
       setCopLoading(false);
     }
@@ -444,9 +431,7 @@ const Reports = () => {
                 onChange={e => setCopMes(Number(e.target.value))}
                 label="Mes"
               >
-                {['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
-                ].map((m, i) => (
+                {MONTHS.map((m, i) => (
                   <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>
                 ))}
               </Select>
