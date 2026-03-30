@@ -216,10 +216,9 @@ const Reports = () => {
   const [patientReportData, setPatientReportData] = useState(null);
   const [patientLoading, setPatientLoading] = useState(false);
 
-  // COP Excel
-  const now = new Date();
-  const [copMes, setCopMes] = useState(now.getMonth() + 1);
-  const [copAño, setCopAño] = useState(now.getFullYear());
+  // COP Excel — inicializado al mes/año actual al montar el componente
+  const [copMes, setCopMes] = useState(() => new Date().getMonth() + 1);
+  const [copAño, setCopAño] = useState(() => new Date().getFullYear());
   const [copLoading, setCopLoading] = useState(false);
   const [copError, setCopError] = useState('');
 
@@ -323,29 +322,15 @@ const Reports = () => {
     setCopLoading(true);
     setCopError('');
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/reports/cop-excel?mes=${copMes}&año=${copAño}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      if (!response.ok) {
-        const json = await response.json().catch(() => ({}));
-        throw new Error(json.message || `Error ${response.status}`);
-      }
-      const blob = await response.blob();
+      const blob = await reportService.generateCopExcel(copMes, copAño);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const mesStr = String(copMes).padStart(2, '0');
-      a.download = `COP_${mesStr}_${copAño}.xlsx`;
+      a.download = `COP_${String(copMes).padStart(2, '0')}_${copAño}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setCopError(err.message || 'Error generando el archivo COP');
+      setCopError(err.response?.data?.message || err.message || 'Error generando el archivo COP');
     } finally {
       setCopLoading(false);
     }
