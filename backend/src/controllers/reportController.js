@@ -6,6 +6,8 @@ const path = require('path');
 const { error: errorResponse } = require('../utils/response');
 
 const GENERATE_COP_SCRIPT = path.join(__dirname, '../../scripts/generate_cop.py');
+const PYTHON_BIN = process.env.PYTHON_BIN || 'python3';
+const PYTHON_TIMEOUT_MS = parseInt(process.env.PYTHON_TIMEOUT_MS) || 60000;
 
 // Crea el transporter de nodemailer solo si SMTP está configurado
 const createTransporter = () => {
@@ -279,12 +281,24 @@ const reportController = {
 
       try {
         await new Promise((resolve, reject) => {
-          const proc = spawn('python3', [GENERATE_COP_SCRIPT, tmpInput, tmpOutput]);
+          const proc = spawn(PYTHON_BIN, [GENERATE_COP_SCRIPT, tmpInput, tmpOutput]);
           let stderr = '';
+
+          // Timeout de seguridad: mata el proceso si supera el límite
+          const timer = setTimeout(() => {
+            proc.kill('SIGTERM');
+            reject(new Error(`El proceso Python superó el tiempo límite (${PYTHON_TIMEOUT_MS / 1000}s)`));
+          }, PYTHON_TIMEOUT_MS);
+
           proc.stderr.on('data', d => { stderr += d.toString(); });
           proc.on('close', code => {
+            clearTimeout(timer);
             if (code !== 0) reject(new Error(stderr || `Python salió con código ${code}`));
             else resolve();
+          });
+          proc.on('error', err => {
+            clearTimeout(timer);
+            reject(new Error(`No se pudo iniciar Python (${PYTHON_BIN}): ${err.message}`));
           });
         });
       } catch (spawnErr) {
