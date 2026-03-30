@@ -243,7 +243,6 @@ const reportController = {
     }
   },
 
-  // POST /api/reports/cop-excel?mes=3&año=2026
   generateCopExcel: async (req, res, next) => {
     try {
       const mes  = parseInt(req.query.mes  || req.body.mes);

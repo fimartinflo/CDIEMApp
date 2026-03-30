@@ -20,7 +20,8 @@ const reportService = {
   generateCopExcel: async (mes, año) => {
     const response = await api.post('/reports/cop-excel', null, {
       params: { mes, año },
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: 30000
     });
     return response.data;
   },

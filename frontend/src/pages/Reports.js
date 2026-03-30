@@ -16,6 +16,18 @@ import { es } from 'date-fns/locale';
 import reportService from '../services/reportService';
 import authService from '../services/authService';
 
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 const clp = (n) => `$${(n || 0).toLocaleString('es-CL')}`;
 const fmtDate = (d) => d ? format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: es }) : '-';
 const fmtDateShort = (d) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: es }) : '-';
@@ -310,12 +322,7 @@ const Reports = () => {
 
     const csv = rows.map(r => r.map(c => `"${c}"`).join(sep)).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte-cdiem-${startDate}-${endDate}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `reporte-cdiem-${startDate}-${endDate}.csv`);
   };
 
   const generateCopExcel = async () => {
@@ -323,12 +330,7 @@ const Reports = () => {
     setCopError('');
     try {
       const blob = await reportService.generateCopExcel(copMes, copAño);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `COP_${String(copMes).padStart(2, '0')}_${copAño}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `COP_${String(copMes).padStart(2, '0')}_${copAño}.xlsx`);
     } catch (err) {
       setCopError(err.response?.data?.message || err.message || 'Error generando el archivo COP');
     } finally {
@@ -429,9 +431,7 @@ const Reports = () => {
                 onChange={e => setCopMes(Number(e.target.value))}
                 label="Mes"
               >
-                {['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
-                ].map((m, i) => (
+                {MONTHS.map((m, i) => (
                   <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>
                 ))}
               </Select>
