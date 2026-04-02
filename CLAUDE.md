@@ -358,13 +358,23 @@ NODE_ENV=production
 REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
+- ✅ **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
+
+### Variables de Entorno — modo Turso
+
+**Para activar Turso:** `cp backend/.env.turso backend/.env && node backend/init-db.js`
+
+```
+DB_DIALECT=turso
+TURSO_URL=libsql://cdiemapp-fimartinflo.aws-us-east-2.turso.io
+TURSO_AUTH_TOKEN=<ver backend/.env.turso>
+```
+
+**Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
+
 ### Pendiente
 - Migraciones Sequelize en lugar de `sync()`
-- Migración futura a base de datos online (PostgreSQL/MySQL)
-- **Conexión a Turso (libSQL):** URL disponible `libsql://cdiemapp-fimartinflo.aws-us-east-2.turso.io`
-  - Requiere auth token desde Turso Dashboard → "Generate Token"
-  - Implementar con `@libsql/sqlite3` como `dialectModule` en Sequelize (`DB_DIALECT=turso`)
-  - Variables a configurar: `TURSO_URL` + `TURSO_AUTH_TOKEN` en `backend/.env`
+- Migración futura a PostgreSQL (cuando se cuente con servidor/dominio)
 
 ---
 
