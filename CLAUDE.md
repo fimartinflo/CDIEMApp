@@ -361,6 +361,10 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 ### Pendiente
 - Migraciones Sequelize en lugar de `sync()`
 - Migración futura a base de datos online (PostgreSQL/MySQL)
+- **Conexión a Turso (libSQL):** URL disponible `libsql://cdiemapp-fimartinflo.aws-us-east-2.turso.io`
+  - Requiere auth token desde Turso Dashboard → "Generate Token"
+  - Implementar con `@libsql/sqlite3` como `dialectModule` en Sequelize (`DB_DIALECT=turso`)
+  - Variables a configurar: `TURSO_URL` + `TURSO_AUTH_TOKEN` en `backend/.env`
 
 ---
 
