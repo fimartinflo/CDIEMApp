@@ -248,10 +248,14 @@ El mismo modelo `Medication` se usa en `SessionMedication` para el flujo de sill
 
 ### Backend
 ```bash
-npm start        # Producción: node src/app.js
-npm run dev      # Desarrollo con nodemon (auto-restart)
-npm run init-db  # Inicializar BD con datos de prueba
-node test-full.mjs  # 63 tests de integración (requiere BD limpia + servidor en :3001)
+npm start              # Producción: node src/app.js
+npm run dev            # Desarrollo con nodemon (auto-restart)
+npm run init-db        # Aplica migraciones pendientes + seed (no borra datos)
+npm run init-db:force  # Reset completo: borra tablas, recrea y seed (solo dev)
+npm run migrate        # Aplica solo migraciones pendientes (sin seed)
+npm run migrate:undo   # Revierte la última migración aplicada
+npm run migrate:status # Lista estado de cada migración (✅ aplicada / ⏳ pendiente)
+node test-full.mjs     # 63 tests de integración (requiere BD limpia + servidor en :3001)
 ```
 
 ### Frontend
@@ -359,6 +363,7 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
 - ✅ **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
+- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 7 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
 
 ### Variables de Entorno — modo Turso
 
@@ -373,7 +378,6 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 **Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
 
 ### Pendiente
-- Migraciones Sequelize en lugar de `sync()`
 - Migración futura a PostgreSQL (cuando se cuente con servidor/dominio)
 
 ---
@@ -397,4 +401,4 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 
 ---
 
-*Última actualización: 2026-03-30 — Tests frontend (32/32), fix RUT edge case, silent refresh sillones, MUI confirm dialogs, PYTHON_BIN/PYTHON_TIMEOUT_MS configurables*
+*Última actualización: 2026-04-03 — Migraciones Sequelize (umzug), Turso/libSQL, tests frontend 32/32, RUT fix, silent refresh, MUI confirm dialogs, PYTHON_BIN/TIMEOUT configurables*
