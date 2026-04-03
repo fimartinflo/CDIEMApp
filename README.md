@@ -23,14 +23,18 @@ Sistema de gestión clínica para un centro oncológico. Permite administrar pac
 
 ## Características Principales
 
-- Gestión completa de pacientes (CRUD + búsqueda por nombre/RUT/pasaporte)
+- Gestión completa de pacientes (CRUD + búsqueda debounced + exportación CSV)
 - Gestión de sillones de atención con estado en tiempo real (polling cada 30s)
 - Asignación de pacientes a sillones y registro de sesiones clínicas
 - Administración de medicamentos por sesión (con descuento de stock automático)
 - Control de inventario con alertas de stock bajo y vencimiento
 - Dashboard con métricas del sistema en tiempo real
 - Módulo de Reportes con costos por sesión y exportación Excel
+- Gestión de usuarios (solo admin): crear, editar, activar/desactivar, reset de contraseña
 - Autenticación JWT con roles diferenciados (admin / enfermera / administracion)
+- Rate limiting en login: 10 intentos / 15 min por IP
+- Aviso de sesión expirada al redirigir al login
+- Compresión gzip en todas las respuestas del backend
 - Persistencia local con SQLite (sin conexión a internet requerida)
 
 ---
@@ -64,7 +68,7 @@ CDIEMApp/
     ├── src/
     │   ├── App.js
     │   ├── components/          # Layout, PatientForm, PatientSearch, PrivateRoute
-    │   ├── pages/               # Login, Dashboard, Patients, Chairs, Inventory, Reports
+    │   ├── pages/               # Login, Dashboard, Patients, Chairs, Inventory, Reports, Users
     │   └── services/            # api.js (Axios), authService, patientService, etc.
     ├── .env.example             # Template de variables de entorno
     └── package.json
@@ -351,9 +355,18 @@ pm2 restart cdiem-backend
 ### Autenticación
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Login → retorna JWT |
+| POST | `/api/auth/login` | Login → retorna JWT *(rate limit: 10 req/15 min)* |
 | GET | `/api/auth/profile` | Perfil del usuario autenticado |
 | PUT | `/api/auth/change-password` | Cambiar contraseña |
+
+### Gestión de Usuarios *(admin only)*
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/auth/users` | Listar todos los usuarios |
+| POST | `/api/auth/users` | Crear usuario |
+| PUT | `/api/auth/users/:id` | Actualizar nombre/email/rol |
+| PUT | `/api/auth/users/:id/toggle-active` | Activar / desactivar |
+| PUT | `/api/auth/users/:id/reset-password` | Resetear contraseña |
 
 ### Pacientes *(admin + enfermera)*
 | Método | Ruta | Descripción |
@@ -364,6 +377,7 @@ pm2 restart cdiem-backend
 | PUT | `/api/patients/:id` | Actualizar |
 | DELETE | `/api/patients/:id` | Desactivar (borrado lógico) |
 | GET | `/api/patients/search` | Búsqueda por nombre/RUT/pasaporte |
+| GET | `/api/patients/export` | Exportar CSV (BOM, compatible Excel) |
 | GET | `/api/patients/:id/history` | Historial de sesiones clínicas |
 
 ### Sillones *(admin + enfermera)*
@@ -374,7 +388,7 @@ pm2 restart cdiem-backend
 | POST | `/api/chairs/:id/release` | Liberar sillón (cierra sesión) |
 | POST | `/api/chairs/:id/medications` | Administrar medicamento |
 | GET | `/api/chairs/live` | Estado en vivo de todos los sillones |
-| GET | `/api/chairs/:id/history` | Historial de sesiones |
+| GET | `/api/chairs/:id/history` | Historial de sesiones *(paginado: ?page=&limit=)* |
 
 ### Inventario
 | Método | Ruta | Roles | Descripción |
@@ -397,7 +411,7 @@ pm2 restart cdiem-backend
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/dashboard` | Métricas del sistema |
-| GET | `/health` | Health check |
+| GET | `/health` | Health check (DB status, uptime, dialect, Node version) |
 
 ---
 
@@ -449,21 +463,28 @@ npm run build          # Build de producción (output: build/)
 
 ---
 
-## Pendiente / Próximos Pasos
-
-- Tests de frontend
-- Migraciones Sequelize en lugar de `sync()`
-- Migración futura a base de datos online (PostgreSQL/MySQL)
-
----
-
 ## Implementado
 
 - ✅ Roles diferenciados: admin, enfermera, administracion
 - ✅ Menú filtrado por rol — cada usuario ve solo sus módulos
 - ✅ Rutas protegidas por rol en frontend y backend
+- ✅ Gestión de usuarios (admin): crear, editar, activar/desactivar, reset contraseña
+- ✅ Rate limiting en login: 10 intentos / 15 min por IP
+- ✅ Aviso de sesión expirada (Snackbar en Login.js)
+- ✅ Exportación CSV de pacientes (BOM UTF-8, compatible Excel español)
+- ✅ Health check mejorado: DB status, dialect, uptime, Node version
+- ✅ Compresión gzip en todas las respuestas
+- ✅ Historial de sillón paginado (?page=&limit=)
 - ✅ Selector de medicamentos del inventario al asignar sillón
 - ✅ Polling en tiempo real para estado de sillones (cada 30s)
 - ✅ Variables de entorno para API_URL y CORS
 - ✅ Módulo de Reportes con costos y exportación Excel
-- ✅ Suite de 63 tests de integración (auth, pacientes, sillones, reportes, roles, inventario por rol)
+- ✅ Suite de 63 tests de integración backend + 32 tests frontend
+- ✅ Migraciones Sequelize con umzug (reemplaza sync())
+- ✅ Soporte multi-dialectos: SQLite (local) / Turso libSQL (cloud)
+
+## Pendiente / Próximos Pasos
+
+- Log de auditoría (quién creó/modificó cada registro)
+- Tests E2E con Playwright
+- Migración futura a PostgreSQL

@@ -172,10 +172,19 @@ module.exports.authMiddleware = authMiddleware; // const { authMiddleware } = re
 ### Autenticación
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Login → retorna JWT |
+| POST | `/api/auth/login` | Login → retorna JWT *(rate limit: 10 req/15 min/IP)* |
 | POST | `/api/auth/register` | Registrar usuario |
 | GET | `/api/auth/profile` | Perfil del usuario autenticado |
 | PUT | `/api/auth/change-password` | Cambiar contraseña |
+
+### Gestión de Usuarios *(admin only)*
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/auth/users` | Listar todos los usuarios |
+| POST | `/api/auth/users` | Crear usuario |
+| PUT | `/api/auth/users/:id` | Actualizar nombre/email/rol |
+| PUT | `/api/auth/users/:id/toggle-active` | Activar / desactivar (no puede desactivarse a sí mismo) |
+| PUT | `/api/auth/users/:id/reset-password` | Resetear contraseña (min 6 chars) |
 
 **Usuarios (seed en init-db.js, contraseñas hasheadas con bcrypt):**
 - `admin` / `admin123` → rol `admin` (acceso completo)
@@ -195,6 +204,7 @@ module.exports.authMiddleware = authMiddleware; // const { authMiddleware } = re
 | PUT | `/api/patients/:id` | Actualizar paciente |
 | DELETE | `/api/patients/:id` | Desactivar (borrado lógico → estado: inactivo) |
 | GET | `/api/patients/search` | Búsqueda por nombre/RUT/pasaporte |
+| GET | `/api/patients/export` | Exportar CSV (BOM UTF-8, sep `;`) — admin + enfermera |
 | POST | `/api/patients/:id/schedule-visit` | Agendar visita |
 | GET | `/api/patients/upcoming-visits` | Próximas visitas programadas |
 | GET | `/api/patients/:id/history` | Historial de sesiones clínicas |
@@ -294,15 +304,16 @@ npm run build    # Build de producción
 ### Servicios
 - **`api.js`** — Axios con baseURL dinámica: `process.env.REACT_APP_API_URL || 'http://localhost:3001/api'`
   - Inyecta token JWT automáticamente: `Authorization: Bearer <token>`
-  - Redirige a `/login` en errores 401, **excepto** si el request es a `/auth/login`
-    (evita loop de recarga cuando las credenciales son incorrectas)
+  - En error 401 (no login): limpia localStorage, setea `sessionStorage.session_expired='1'`, redirige a `/login`
+  - Login.js lee el flag en `useEffect` → muestra Snackbar "Tu sesión ha expirado"
 - **`patientService.js`** — CRUD + `validateRUT()` + `formatRUT()` locales
 - **`chairService.js`** — CRUD + `assignPatient(id, patientId, medicamentos)` + `releaseChair(id)`
 - **`inventoryService.js`** — CRUD completo + `updateQuantity(id, cantidad, tipo, motivo)`
 
 ### Páginas
 - **`Dashboard.js`** — Consume `GET /api/dashboard`, filtra tarjetas de acceso rápido según rol del usuario
-- **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, historial clínico con duración en HH:MM:SS
+- **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, historial clínico con duración en HH:MM:SS; botón "Exportar CSV" → `GET /api/patients/export`
+- **`Users.js`** — Solo admin: tabla con crear/editar/toggle-active/reset-password usando Dialogs MUI
 - **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos
 - **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"; botones de escritura visibles solo para `admin` y `administracion`
 - **`Reports.js`** — Selección de período, tabla expandible por paciente, exportación Excel (CSV con BOM para Excel español), diálogo de informe individual con impresión funcional
@@ -352,6 +363,14 @@ npm run build    # Build de producción
 - ✅ **MUI confirm dialogs**: `window.confirm()` reemplazado en Chairs.js e Inventory.js
 - ✅ **PYTHON_BIN configurable**: `process.env.PYTHON_BIN || 'python3'` en reportController.js
 - ✅ **Timeout proceso Python**: `PYTHON_TIMEOUT_MS` (default 60s), mata el proceso con `SIGTERM`
+- ✅ **A1 — Gestión de usuarios (admin)**: `GET|POST|PUT /api/auth/users`, toggle-active, reset-password; página `Users.js` con tabla + Dialogs; menú "Usuarios" en Layout (solo admin); ruta `/users` con `RoleRoute(['admin'])`
+- ✅ **A2 — Rate limiting login**: `express-rate-limit` en `POST /api/auth/login` (10 req / 15 min por IP)
+- ✅ **A3 — Sesión expirada**: `sessionStorage.session_expired` → Snackbar warning en Login.js
+- ✅ **B1 — Export CSV pacientes**: `GET /api/patients/export` (BOM UTF-8, separador `;`, compatible Excel español); botón "Exportar CSV" en Patients.js
+- ✅ **B3 — Health check mejorado**: `GET /health` incluye `database.status`, `database.dialect`, `uptime`, `node`, `version`
+- ✅ **B4 — README actualizado**: refleja todos los módulos y endpoints actuales
+- ✅ **C1 — Gzip compression**: `compression` registrado antes de CORS en `app.js`
+- ✅ **C2 — Chair history paginado**: `GET /api/chairs/:id/history?page=&limit=` → respuesta con `pagination: {total, page, pages, limit}`
 
 ### Variables de Entorno (producción)
 
@@ -388,6 +407,8 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 **Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
 
 ### Pendiente
+- **B2:** Log de auditoría (modelo AuditLog + migration + hooks)
+- **C3:** Tests E2E con Playwright
 - Migración futura a PostgreSQL (cuando se cuente con servidor/dominio)
 
 ---
@@ -442,4 +463,4 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 | C2 | **Paginación en historial de sillón** | `GET /chairs/:id/history` devuelve todas las sesiones sin límite. Agregar `page` y `limit` como en pacientes. |
 | C3 | **Tests E2E con Playwright** | Los tests actuales son unitarios (RTL) e integración (test-api.js). Playwright permitiría tests del flujo completo frontend+backend en un navegador real. |
 
-*Última actualización: 2026-04-03 — Migraciones Sequelize (umzug), Turso/libSQL, tests frontend 32/32, RUT fix, silent refresh, MUI confirm dialogs, PYTHON_BIN/TIMEOUT configurables*
+*Última actualización: 2026-04-03 — A1 gestión usuarios, A2 rate limit, A3 sesión expirada, B1 CSV export pacientes, B3 health check mejorado, B4 README, C1 gzip, C2 chair history paginado*
