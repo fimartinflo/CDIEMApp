@@ -10,6 +10,7 @@ import Patients from './pages/Patients';
 import Chairs from './pages/Chairs';
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
+import Users from './pages/Users';
 
 // Importar componentes
 import PrivateRoute, { RoleRoute } from './components/PrivateRoute';
@@ -61,6 +62,11 @@ function App() {
               {/* Admin + administracion: reportes */}
               <Route element={<RoleRoute allowedRoles={['admin', 'administracion']} />}>
                 <Route path="/reports" element={<Reports />} />
+              </Route>
+
+              {/* Admin only: gestión de usuarios */}
+              <Route element={<RoleRoute allowedRoles={['admin']} />}>
+                <Route path="/users" element={<Users />} />
               </Route>
 
             </Route>

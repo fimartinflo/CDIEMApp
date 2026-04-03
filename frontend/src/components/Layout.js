@@ -25,6 +25,7 @@ import {
   Inventory,
   Assessment,
   Logout,
+  ManageAccounts,
 } from '@mui/icons-material';
 import authService from '../services/authService';
 
@@ -51,6 +52,7 @@ const allMenuItems = [
   { text: 'Sillones',      icon: <Chair />,          path: '/chairs',    roles: ['admin', 'enfermera'] },
   { text: 'Inventario',    icon: <Inventory />,      path: '/inventory', roles: ['admin', 'enfermera', 'administracion'] },
   { text: 'Reportes',      icon: <Assessment />,     path: '/reports',   roles: ['admin', 'administracion'] },
+  { text: 'Usuarios',     icon: <ManageAccounts />, path: '/users',     roles: ['admin'] },
 ];
 
 const Layout = () => {
