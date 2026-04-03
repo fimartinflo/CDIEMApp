@@ -4,14 +4,14 @@
   "description": "Backend para sistema dental CDIEM",
   "main": "src/app.js",
   "scripts": {
-    "start":          "node src/app.js",
-    "dev":            "nodemon src/app.js",
-    "init-db":        "node init-db.js",
-    "init-db:force":  "node init-db.js --force",
-    "migrate":        "node src/database/migrate.js",
-    "migrate:undo":   "node src/database/migrate.js --undo",
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "init-db": "node init-db.js",
+    "init-db:force": "node init-db.js --force",
+    "migrate": "node src/database/migrate.js",
+    "migrate:undo": "node src/database/migrate.js --undo",
     "migrate:status": "node src/database/migrate.js --status",
-    "test":           "node test-api.js"
+    "test": "node test-api.js"
   },
   "keywords": [
     "dental",
@@ -23,9 +23,11 @@
   "dependencies": {
     "@libsql/sqlite3": "^0.3.1",
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.4",
     "sequelize": "^6.37.7",

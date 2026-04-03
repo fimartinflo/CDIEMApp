@@ -260,6 +260,39 @@ const patientController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  // GET /api/patients/export — exportar todos los pacientes como CSV
+  exportPatients: async (req, res, next) => {
+    try {
+      const patients = await Patient.findAll({ order: [['nombreCompleto', 'ASC']] });
+
+      const header = ['ID', 'Nombre Completo', 'Tipo Identificación', 'RUT', 'Pasaporte',
+        'Fecha Nacimiento', 'Teléfono', 'Email', 'Estado', 'Fecha Registro'];
+
+      const rows = patients.map(p => [
+        p.id,
+        `"${(p.nombreCompleto || '').replace(/"/g, '""')}"`,
+        p.tipoIdentificacion || '',
+        p.rut || '',
+        p.pasaporte || '',
+        p.fechaNacimiento || '',
+        p.telefono || '',
+        p.email || '',
+        p.estado || '',
+        p.createdAt ? new Date(p.createdAt).toLocaleDateString('es-CL') : ''
+      ]);
+
+      // BOM UTF-8 para compatibilidad con Excel en español
+      const bom = '\uFEFF';
+      const csv = bom + [header.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="pacientes_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

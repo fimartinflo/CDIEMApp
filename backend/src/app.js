@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 require('dotenv').config();
 
 const app = express();
@@ -37,6 +38,7 @@ const reportRoutes = require('./routes/reportRoutes');
 })();
 
 // === Middleware global ===
+app.use(compression());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -67,11 +69,21 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  let dbStatus = 'ok';
+  try {
+    await sequelize.authenticate();
+  } catch {
+    dbStatus = 'error';
+  }
+  const dialect = process.env.DB_DIALECT || 'sqlite';
   res.json({
-    status: 'healthy',
+    status: dbStatus === 'ok' ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: Math.floor(process.uptime()),
+    version: process.env.npm_package_version || '1.0.0',
+    node: process.version,
+    database: { status: dbStatus, dialect }
   });
 });
 
@@ -504,18 +516,23 @@ app.get('/api/patients/:id/history', auth, async (req, res) => {
   }
 });
 
-// ==================== HISTORIAL POR SILLÓN ====================
+// ==================== HISTORIAL POR SILLÓN (con paginación) ====================
 app.get('/api/chairs/:id/history', auth, async (req, res) => {
   try {
     const { id } = req.params;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const offset = (page - 1) * limit;
 
-    const sessions = await ChairSession.findAll({
+    const { count, rows: sessions } = await ChairSession.findAndCountAll({
       where: { chairId: id },
       include: [
         { model: Patient },
         { model: SessionMedication, include: [Medication] }
       ],
-      order: [['horaInicio', 'DESC']]
+      order: [['horaInicio', 'DESC']],
+      limit,
+      offset
     });
 
     const history = sessions.map(session => {
@@ -536,7 +553,11 @@ app.get('/api/chairs/:id/history', auth, async (req, res) => {
       };
     });
 
-    return res.json({ success: true, data: history });
+    return res.json({
+      success: true,
+      data: history,
+      pagination: { total: count, page, pages: Math.ceil(count / limit), limit }
+    });
 
   } catch (err) {
     console.error('❌ Error obteniendo historial del sillón:', err);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -8,7 +8,8 @@ import {
   Typography,
   Box,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import { LockOutlined } from '@mui/icons-material';
 import authService from '../services/authService';
@@ -17,6 +18,14 @@ const Login = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('session_expired')) {
+      setSessionExpired(true);
+      sessionStorage.removeItem('session_expired');
+    }
+  }, []);
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -169,6 +178,17 @@ const Login = () => {
           </Box>
         </Paper>
       </Box>
+
+      <Snackbar
+        open={sessionExpired}
+        autoHideDuration={6000}
+        onClose={() => setSessionExpired(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="warning" onClose={() => setSessionExpired(false)}>
+          Tu sesión ha expirado. Por favor inicia sesión nuevamente.
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

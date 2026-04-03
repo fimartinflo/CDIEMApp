@@ -1,12 +1,22 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const { authMiddleware } = require('../middleware/auth');
 const allowRoles = require('../middleware/roles');
 
+// Rate limit: máximo 10 intentos de login por IP en 15 minutos
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Demasiados intentos de login. Intente de nuevo en 15 minutos.' }
+});
+
 // Rutas públicas
 router.post('/register', authController.register);
-router.post('/login', authController.login);
+router.post('/login', loginLimiter, authController.login);
 
 // Rutas protegidas
 router.get('/profile', authMiddleware, authController.getProfile);
