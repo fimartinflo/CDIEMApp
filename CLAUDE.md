@@ -42,7 +42,17 @@ CDIEMApp/
 │   ├── src/
 │   │   ├── app.js               # Entry point del servidor Express
 │   │   ├── config/
-│   │   │   └── database.js      # Configuración SQLite/Sequelize
+│   │   │   └── database.js      # Configuración SQLite / Turso / PostgreSQL
+│   │   ├── database/            # Sistema de migraciones (umzug)
+│   │   │   ├── migrate.js       # Runner: migrate() / migrateUndo() / status()
+│   │   │   └── migrations/
+│   │   │       ├── 001-create-users.js
+│   │   │       ├── 002-create-patients.js
+│   │   │       ├── 003-create-chairs.js
+│   │   │       ├── 004-create-medications.js
+│   │   │       ├── 005-create-chair-sessions.js
+│   │   │       ├── 006-create-session-medications.js
+│   │   │       └── 007-create-visits.js
 │   │   ├── models/              # Modelos Sequelize
 │   │   │   ├── Patient.js
 │   │   │   ├── Chair.js
@@ -70,8 +80,8 @@ CDIEMApp/
 │   │   │   └── errorHandler.js  # Manejo centralizado de errores
 │   │   └── utils/
 │   │       └── response.js      # success(res, message, data, status) / error(res, message, code, status)
-│   ├── init-db.js               # Script de inicialización y seed (incluye usuarios)
-│   ├── test-api.js              # Suite de 67 tests de integración
+│   ├── init-db.js               # Inicialización idempotente + seed (usa migraciones)
+│   ├── test-api.js              # Suite de 63 tests de integración
 │   └── package.json
 │
 └── frontend/
@@ -400,5 +410,36 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 ```
 
 ---
+
+---
+
+## Próximas Mejoras Sugeridas
+
+> Esta sección se actualiza al final de cada sesión de trabajo.
+
+### 🔴 Alta prioridad
+
+| # | Mejora | Descripción |
+|---|--------|-------------|
+| A1 | **Página de gestión de usuarios** | El backend tiene endpoints CRUD de usuarios (`/api/auth/register`, etc.) pero no hay UI. El rol `admin` debería poder crear, editar y desactivar usuarios desde el frontend. |
+| A2 | **Rate limiting en login** | `POST /api/auth/login` no tiene límite de intentos — vulnerable a fuerza bruta. Implementar con `express-rate-limit` (ej. 10 intentos / 15 min por IP). |
+| A3 | **Mensaje claro al expirar sesión** | Cuando el JWT caduca (8h), el usuario es redirigido a `/login` sin explicación. Mostrar un Snackbar "Sesión expirada, inicia sesión nuevamente" antes de redirigir. |
+
+### 🟡 Media prioridad
+
+| # | Mejora | Descripción |
+|---|--------|-------------|
+| B1 | **Exportación de pacientes a CSV/Excel** | Botón en la página de Pacientes para exportar la lista filtrada. Reutiliza el patrón de `downloadBlob` de Reports.js. |
+| B2 | **Log de auditoría** | Registrar en BD quién hizo qué y cuándo: cambios de stock, asignaciones de sillón, modificaciones de paciente. Útil para trazabilidad clínica. |
+| B3 | **Health check mejorado** | `GET /health` actualmente devuelve solo `{ status: 'ok' }`. Agregar estado de la BD, uptime, versión del servidor y dialecto en uso. |
+| B4 | **README.md actualizado** | El README está desactualizado. Actualizarlo con el stack actual, instrucciones de instalación, comandos de migración y modos de BD. |
+
+### 🟢 Baja prioridad / técnico
+
+| # | Mejora | Descripción |
+|---|--------|-------------|
+| C1 | **Compresión gzip en Express** | Agregar `compression` middleware para reducir el tamaño de las respuestas JSON en producción. |
+| C2 | **Paginación en historial de sillón** | `GET /chairs/:id/history` devuelve todas las sesiones sin límite. Agregar `page` y `limit` como en pacientes. |
+| C3 | **Tests E2E con Playwright** | Los tests actuales son unitarios (RTL) e integración (test-api.js). Playwright permitiría tests del flujo completo frontend+backend en un navegador real. |
 
 *Última actualización: 2026-04-03 — Migraciones Sequelize (umzug), Turso/libSQL, tests frontend 32/32, RUT fix, silent refresh, MUI confirm dialogs, PYTHON_BIN/TIMEOUT configurables*
