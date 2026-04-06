@@ -1,13 +1,14 @@
 const sequelize = require('../config/database');
 
-const Patient = require('./Patient');
-const Chair = require('./Chair');
-const ChairSession = require('./ChairSession');
-const Medication = require('./Medication');
+const Patient          = require('./Patient');
+const Chair            = require('./Chair');
+const ChairSession     = require('./ChairSession');
+const Medication       = require('./Medication');
 const SessionMedication = require('./SessionMedication');
-const User = require('./User');
-const Visit = require('./Visit');
-const Inventory = require('./Inventory');
+const User             = require('./User');
+const Visit            = require('./Visit');
+const Inventory        = require('./Inventory');
+const AuditLog         = require('./AuditLog');
 
 // === Asociaciones ChairSession (flujo de sillón) ===
 Patient.hasMany(ChairSession, { foreignKey: 'patientId' });
@@ -38,5 +39,6 @@ module.exports = {
   SessionMedication,
   User,
   Visit,
-  Inventory
+  Inventory,
+  AuditLog
 };

@@ -371,6 +371,9 @@ npm run build    # Build de producción
 - ✅ **B4 — README actualizado**: refleja todos los módulos y endpoints actuales
 - ✅ **C1 — Gzip compression**: `compression` registrado antes de CORS en `app.js`
 - ✅ **C2 — Chair history paginado**: `GET /api/chairs/:id/history?page=&limit=` → respuesta con `pagination: {total, page, pages, limit}`
+- ✅ **B2 — Log de auditoría**: modelo `AuditLog` + migration 008 (con índices), `utils/audit.js` helper no-bloqueante; hooks en controllers (patient, inventory) y inline en app.js (assign/release); `GET /api/audit` (admin only) con filtros y paginación; Dashboard muestra tarjeta y métrica de usuarios (admin)
+- ✅ **C3 — Playwright E2E**: setup en `e2e/` con `playwright.config.js` + 3 archivos de test: `login.spec.js`, `dashboard.spec.js`, `chairs.spec.js`
+- ✅ **Comentarios**: todos los archivos del proyecto comentados con JSDoc/inline (controllers, models, middleware, routes, utils, services, components, migrations)
 
 ### Variables de Entorno (producción)
 
@@ -407,8 +410,6 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 **Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
 
 ### Pendiente
-- **B2:** Log de auditoría (modelo AuditLog + migration + hooks)
-- **C3:** Tests E2E con Playwright
 - Migración futura a PostgreSQL (cuando se cuente con servidor/dominio)
 
 ---
@@ -463,4 +464,4 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 | C2 | **Paginación en historial de sillón** | `GET /chairs/:id/history` devuelve todas las sesiones sin límite. Agregar `page` y `limit` como en pacientes. |
 | C3 | **Tests E2E con Playwright** | Los tests actuales son unitarios (RTL) e integración (test-api.js). Playwright permitiría tests del flujo completo frontend+backend en un navegador real. |
 
-*Última actualización: 2026-04-03 — A1 gestión usuarios, A2 rate limit, A3 sesión expirada, B1 CSV export pacientes, B3 health check mejorado, B4 README, C1 gzip, C2 chair history paginado*
+*Última actualización: 2026-04-06 — B2 audit log, C3 Playwright E2E, Dashboard tarjeta usuarios, comentarios completos en todo el proyecto*

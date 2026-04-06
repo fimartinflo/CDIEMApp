@@ -1,3 +1,41 @@
+/**
+ * @file app.js
+ * @description Entry point del servidor Express para CDIEMApp.
+ *
+ * Este archivo cumple dos responsabilidades principales:
+ *
+ * 1. CONFIGURACIÓN DEL SERVIDOR
+ *    - Registra todos los middlewares globales (compression, CORS, JSON, logger).
+ *    - Monta los routers de dominio (/api/auth, /api/patients, /api/inventory, /api/chairs CRUD).
+ *    - Registra el 404 genérico y el errorHandler centralizado al final.
+ *    - Inicia el servidor HTTP en el puerto configurado.
+ *
+ * 2. ENDPOINTS DE SESIÓN CLÍNICA (inline, NO en chairRoutes)
+ *    Las operaciones clínicas de sillón se definen aquí directamente porque
+ *    requieren transacciones que cruzan múltiples modelos (Chair + ChairSession +
+ *    Patient + Medication + SessionMedication). Centralizarlas en app.js evita
+ *    inyectar múltiples modelos en un controller separado.
+ *
+ *    Endpoints inline de sillones:
+ *      GET  /api/chairs                  — lista sillones con sesión activa embebida
+ *      POST /api/chairs/:id/assign       — asigna paciente (crea ChairSession activa)
+ *      POST /api/chairs/:id/release      — libera sillón (cierra sesión, restaura estados)
+ *      POST /api/chairs/:id/medications  — administra medicamento (descuenta stock)
+ *      GET  /api/chairs/:id/medications  — medicamentos de la sesión activa
+ *      GET  /api/chairs/live             — estado en vivo de todos los sillones
+ *      GET  /api/chairs/:id/history      — historial paginado de sesiones del sillón
+ *
+ *    Endpoints inline de pacientes:
+ *      GET  /api/patients/:id/history    — historial clínico del paciente
+ *
+ *    Endpoints generales:
+ *      GET  /api/dashboard               — métricas clínicas en tiempo real
+ *      GET  /health                      — health check con estado de BD
+ *      GET  /                            — información general de la API
+ *
+ * @module app
+ */
+
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
@@ -10,6 +48,9 @@ const errorHandler = require('./middleware/errorHandler');
 const auth = require('./middleware/auth');
 const allowRoles = require('./middleware/roles');
 
+// Importar todos los modelos Sequelize con sus asociaciones ya definidas.
+// sequelize: instancia de conexión para transacciones y consultas raw.
+// Los demás son los modelos ORM usados en los endpoints inline de sesión clínica.
 const {
   sequelize,
   Chair,
@@ -20,13 +61,18 @@ const {
 } = require('./models');
 
 // === Importar rutas ===
-const authRoutes = require('./routes/authRoutes');
+const authRoutes    = require('./routes/authRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
-const chairRoutes = require('./routes/chairRoutes');
-const reportRoutes = require('./routes/reportRoutes');
+const chairRoutes   = require('./routes/chairRoutes');
+const reportRoutes  = require('./routes/reportRoutes');
+const auditRoutes   = require('./routes/auditRoutes');
+const logAudit      = require('./utils/audit');
 
 // === Conectar BD ===
+// Se ejecuta una vez al iniciar el servidor. sequelize.sync() crea las tablas que
+// no existan según los modelos definidos — no elimina datos existentes.
+// Las migraciones formales (umzug) se aplican con `node init-db.js`.
 (async () => {
   try {
     await sequelize.authenticate();
@@ -38,7 +84,11 @@ const reportRoutes = require('./routes/reportRoutes');
 })();
 
 // === Middleware global ===
+// compression() — gzip/deflate sobre las respuestas JSON; reduce ancho de banda en producción.
+// Debe registrarse ANTES de CORS para que se aplique a todas las respuestas.
 app.use(compression());
+// CORS — permite peticiones del frontend (por defecto http://localhost:3000).
+// Configurable vía CORS_ORIGIN en .env para producción.
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -46,14 +96,19 @@ app.use(cors({
   credentials: true
 }));
 
+// express.json() — parsea el body de las peticiones con Content-Type: application/json.
 app.use(express.json());
 
+// Logger de peticiones — imprime método, ruta y hora local en cada request.
+// Útil para depuración en desarrollo; en producción se puede reemplazar por morgan.
 app.use((req, res, next) => {
   console.log(`${new Date().toLocaleTimeString()} - ${req.method} ${req.path}`);
   next();
 });
 
 // === Rutas de información ===
+// Ruta raíz — devuelve información básica de la API sin requerir autenticación.
+// Útil para verificar que el servidor está en línea.
 app.get('/', (req, res) => {
   res.json({
     message: 'API CDIEM - Centro Oncológico',
@@ -69,6 +124,17 @@ app.get('/', (req, res) => {
   });
 });
 
+/**
+ * GET /health
+ * Health check del servidor — no requiere autenticación.
+ *
+ * Verifica la conectividad con la base de datos mediante sequelize.authenticate()
+ * y devuelve información del entorno. Si la BD falla, el status devuelto es
+ * 'degraded' (el servidor HTTP sigue respondiendo).
+ *
+ * Respuesta:
+ *   { status, timestamp, uptime, version, node, database: { status, dialect } }
+ */
 app.get('/health', async (req, res) => {
   let dbStatus = 'ok';
   try {
@@ -89,23 +155,45 @@ app.get('/health', async (req, res) => {
 
 // ==================== MONTAR RUTAS ====================
 // authRoutes maneja: POST /login, POST /register, GET /profile, PUT /change-password
+// También incluye gestión de usuarios (CRUD de usuarios, toggle-active, reset-password) — solo admin.
 app.use('/api/auth', authRoutes);
 
 // patientRoutes maneja: GET /, POST /, GET /:id, PUT /:id, DELETE /:id, GET /search, GET /upcoming-visits, POST /:id/schedule-visit
+// NOTA: GET /:id/history se define más abajo inline porque requiere ChairSession y Medication.
 app.use('/api/patients', patientRoutes);
 
 // inventoryRoutes maneja: GET /, POST /, GET /:id, PUT /:id, DELETE /:id, GET /alerts, PUT /:id/quantity
+// Usa el modelo Medication (no el modelo legacy Inventory).
 app.use('/api/inventory', inventoryRoutes);
 
-// chairRoutes maneja solo CRUD: POST /, PUT /:id, DELETE /:id, POST /:id/reset
-// Las operaciones de sesión (assign, release, medications) quedan inline abajo
+// chairRoutes maneja solo CRUD básico: POST /, PUT /:id, DELETE /:id, POST /:id/reset
+// Las operaciones de sesión clínica (assign, release, medications, live, history)
+// se definen inline a continuación porque cruzan múltiples modelos con transacciones.
 app.use('/api/chairs', chairRoutes);
 
 // reportRoutes: GET /, GET /patient/:id, POST /email
+// Genera informes clínicos en Excel/CSV mediante subproceso Python (cop library).
 app.use('/api/reports', reportRoutes);
 
+// auditRoutes: GET /api/audit (admin only)
+app.use('/api/audit', auditRoutes);
+
 // ==================== SILLONES: LISTADO CON ESTADO DE SESIÓN ====================
-// GET /api/chairs retorna sillones con info del paciente actual via ChairSession
+/**
+ * GET /api/chairs
+ * Devuelve todos los sillones activos, cada uno enriquecido con la información
+ * de su sesión clínica activa (si existe).
+ *
+ * Usa un LEFT JOIN implícito (required: false) contra ChairSession para que
+ * los sillones sin sesión activa también aparezcan en el resultado.
+ *
+ * Respuesta por sillón:
+ *   { id, numero, nombre, ubicacion, estado, activo,
+ *     pacienteActual, pacienteActualId, horaInicio, sessionId }
+ *
+ * pacienteActual / pacienteActualId / horaInicio / sessionId serán null
+ * si el sillón no tiene sesión activa.
+ */
 app.get('/api/chairs', auth, async (req, res) => {
   try {
     const chairs = await Chair.findAll({
@@ -113,12 +201,14 @@ app.get('/api/chairs', auth, async (req, res) => {
       include: [{
         model: ChairSession,
         where: { estado: 'activa' },
-        required: false,
+        required: false,  // LEFT JOIN: incluye sillones sin sesión activa
         include: [{ model: Patient, attributes: ['id', 'nombreCompleto', 'rut'] }]
       }],
       order: [['numero', 'ASC']]
     });
 
+    // Aplanar la estructura Sequelize en un objeto simple para el frontend.
+    // chair.ChairSessions[0] es la sesión activa (puede ser undefined si no hay ninguna).
     const result = chairs.map(chair => {
       const session = chair.ChairSessions?.[0];
       return {
@@ -216,6 +306,9 @@ app.post('/api/chairs/:id/assign', auth, allowRoles('admin', 'enfermera'), async
 
     await transaction.commit();
 
+    await logAudit({ req, accion: 'ASIGNAR_SILLON', entidad: 'ChairSession',
+      entidadId: session.id, detalles: { sillon: chair.numero, paciente: patient.nombreCompleto } });
+
     return success(res, 'Paciente asignado al sillón exitosamente', { chair, session, patient: { id: patient.id, nombreCompleto: patient.nombreCompleto } });
 
   } catch (err) {
@@ -267,6 +360,9 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
     }
 
     await transaction.commit();
+
+    await logAudit({ req, accion: 'LIBERAR_SILLON', entidad: 'ChairSession',
+      entidadId: session.id, detalles: { duracionSegundos, paciente: session.Patient?.nombreCompleto } });
 
     res.json({
       success: true,

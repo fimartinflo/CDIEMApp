@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Grid, Card, CardContent, Typography, Button, Box, CircularProgress, Divider } from '@mui/material';
-import { People, Chair, Inventory, Assessment } from '@mui/icons-material';
+import { People, Chair, Inventory, Assessment, ManageAccounts } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import authService from '../services/authService';
@@ -8,15 +8,28 @@ import authService from '../services/authService';
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
+
+  // Métricas clínicas del sistema (pacientes, sillones, sesiones, medicamentos críticos)
   const [metrics, setMetrics] = useState(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
+  // Contador de usuarios activos (solo para admin)
+  const [totalUsuarios, setTotalUsuarios] = useState(null);
+
   useEffect(() => {
+    // Carga métricas generales del dashboard
     api.get('/dashboard')
       .then(res => setMetrics(res.data.data))
       .catch(() => setMetrics(null))
       .finally(() => setLoadingMetrics(false));
-  }, []);
+
+    // El conteo de usuarios solo se solicita si el usuario es admin
+    if (user?.role === 'admin') {
+      api.get('/auth/users')
+        .then(res => setTotalUsuarios((res.data.data || []).length))
+        .catch(() => setTotalUsuarios(null));
+    }
+  }, []); // eslint-disable-line
 
   const allCards = [
     {
@@ -50,6 +63,14 @@ const Dashboard = () => {
       path: '/reports',
       color: '#7b1fa2',
       roles: ['admin', 'administracion']
+    },
+    {
+      title: 'Usuarios',
+      description: 'Gestión de cuentas del sistema',
+      icon: <ManageAccounts fontSize="large" />,
+      path: '/users',
+      color: '#00695c',
+      roles: ['admin']
     }
   ];
 
@@ -192,6 +213,25 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
+
+              {/* Métrica de usuarios — solo visible para admin */}
+              {user?.role === 'admin' && (
+                <Grid item xs={6} sm={3}>
+                  <Card variant="outlined">
+                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="h4" color="#00695c">
+                        {totalUsuarios ?? '—'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Usuarios registrados
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Cuentas del sistema
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
             </Grid>
           ) : (
             <Typography variant="body2" color="text.secondary">
