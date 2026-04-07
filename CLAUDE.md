@@ -461,6 +461,28 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 
 ---
 
+## Deploy Local Windows (sin internet)
+
+**Arquitectura:** Un solo proceso Node.js (puerto 3001) sirve la API en `/api/*` y el build de React como estáticos. No se necesita Nginx ni dos procesos.
+
+**Archivos creados:**
+- `instalar.bat` — instalación única (npm install x2 + build + init-db)
+- `iniciar.bat` — arranca el servidor, abrir `http://localhost:3001`
+- `detener.bat` — termina el proceso Node en el puerto 3001
+- `frontend/.env.production` — `REACT_APP_API_URL=/api` (URL relativa)
+- `backend/src/app.js` — agregado `express.static(frontendBuild)` + catch-all React Router
+
+**Requisito previo del cliente:** Node.js 20 LTS instalado desde nodejs.org.
+
+**Flujo:**
+1. Primera vez: doble clic en `instalar.bat`
+2. Cada vez que se use: doble clic en `iniciar.bat` → abrir `http://localhost:3001`
+3. Para cerrar: doble clic en `detener.bat` o cerrar la ventana del servidor
+
+*Última actualización: 2026-04-07 — Scripts Windows deploy local*
+
+---
+
 ## Flujo Clínico Principal
 
 ```

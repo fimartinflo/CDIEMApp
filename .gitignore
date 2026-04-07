@@ -8,6 +8,7 @@ yarn-error.log*
 .env.*
 !.env.example
 !.env.supabase.example
+!frontend/.env.production
 
 # Database
 *.sqlite
