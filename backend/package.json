@@ -11,6 +11,8 @@
     "migrate": "node src/database/migrate.js",
     "migrate:undo": "node src/database/migrate.js --undo",
     "migrate:status": "node src/database/migrate.js --status",
+    "sync-to-supabase": "node scripts/sqlite-to-postgres.js",
+    "sync-to-supabase:force": "node scripts/sqlite-to-postgres.js --force",
     "test": "node test-api.js"
   },
   "keywords": [
@@ -30,6 +32,8 @@
     "express-rate-limit": "^8.3.2",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.4",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "sqlite3": "^5.1.7",
     "umzug": "^3.8.2"

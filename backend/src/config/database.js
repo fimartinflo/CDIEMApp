@@ -38,10 +38,34 @@ if (dialect === 'turso') {
     pool: { max: 1 }   // libsql maneja una conexión por instancia
   });
 } else if (dialect === 'postgres') {
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+  // Supabase / cualquier PostgreSQL cloud
+  // DATABASE_URL formato: postgresql://postgres.[ref]:[password]@[host]:[port]/postgres
+  //
+  // Supabase ofrece dos endpoints:
+  //   - Direct connection  (port 5432): máx ~60 conexiones simultáneas en free tier
+  //   - Transaction pooler (port 6543): sin límite práctico, recomendado para Node.js
+  //
+  // Usar el Transaction Pooler (puerto 6543) para evitar "too many connections".
+  // Obtenerlo en: Supabase Dashboard → Project Settings → Database → Connection pooling
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DB_DIALECT=postgres requiere DATABASE_URL en las variables de entorno');
+
+  sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     dialectOptions: {
-      ssl: { require: true, rejectUnauthorized: false }
+      ssl: {
+        require: true,
+        rejectUnauthorized: false   // necesario para certificados de Supabase / Neon / Aiven
+      }
+    },
+    // Pool conservador para Supabase free tier (max 60 conexiones directas)
+    // Si usas el Transaction Pooler de Supabase puedes subir max a 10-20
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,  // ms máx para obtener conexión del pool
+      idle: 10000      // ms antes de liberar conexión inactiva
     },
     logging: false
   });

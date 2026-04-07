@@ -32,7 +32,7 @@ Permite administrar pacientes, sillas de tratamiento y medicamentos, con funcion
 |------|-----------|
 | Backend | Node.js + Express v5.2.1 |
 | Frontend | React v19.2.4 |
-| Base de datos | SQLite3 (local, offline-first) |
+| Base de datos | SQLite3 (offline) / PostgreSQL via Supabase (cloud) / Turso (edge) |
 | ORM | Sequelize v6.37.7 |
 | Autenticación | JWT (jsonwebtoken v9.0.3) + bcryptjs v3.0.3 |
 | UI | Material-UI (MUI) v7.3.7 |
@@ -408,7 +408,43 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
 - ✅ **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
-- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 7 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
+- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 8 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
+- ✅ **Supabase (PostgreSQL cloud):** `DB_DIALECT=postgres` + `DATABASE_URL`; pool conservador; SSL sin verificación de cert; `scripts/sqlite-to-postgres.js` para migrar datos; `backend/.env.supabase` como plantilla
+- ✅ **pg + pg-hstore** instalados en backend (dependencias PostgreSQL)
+
+### Modos de Base de Datos
+
+El proyecto soporta **tres modos** seleccionables por variable de entorno:
+
+| Modo | `DB_DIALECT` | Cuándo usar |
+|------|-------------|-------------|
+| **SQLite local** (default) | no definido o `sqlite` | Offline, presentaciones, desarrollo |
+| **Supabase / PostgreSQL** | `postgres` | Online, producción, evaluación cloud |
+| **Turso (libSQL)** | `turso` | Alternativa cloud SQL edge |
+
+### Variables de Entorno — modo Supabase
+
+**Para activar Supabase:** `cp backend/.env.supabase.example backend/.env`
+(editar con las credenciales reales desde Supabase Dashboard)
+
+```
+DB_DIALECT=postgres
+DATABASE_URL=postgresql://postgres.[REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+```
+
+**Inicializar tablas en Supabase** (primera vez):
+```bash
+DB_DIALECT=postgres DATABASE_URL="..." node backend/init-db.js
+```
+
+**Migrar datos existentes de SQLite a Supabase:**
+```bash
+# Requiere que las tablas ya existan en Supabase (correr init-db primero)
+DATABASE_URL="..." npm run sync-to-supabase          # idempotente
+DATABASE_URL="..." npm run sync-to-supabase:force    # trunca y reinsersta todo
+```
+
+**Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
 
 ### Variables de Entorno — modo Turso
 
@@ -420,10 +456,8 @@ TURSO_URL=libsql://cdiemapp-fimartinflo.aws-us-east-2.turso.io
 TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 ```
 
-**Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
-
 ### Pendiente
-- Migración futura a PostgreSQL (cuando se cuente con servidor/dominio)
+- Ninguno relacionado a BD — los tres modos están operativos
 
 ---
 
