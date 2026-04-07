@@ -26,6 +26,7 @@ import {
   Assessment,
   Logout,
   ManageAccounts,
+  History,
 } from '@mui/icons-material';
 import authService from '../services/authService';
 
@@ -52,7 +53,8 @@ const allMenuItems = [
   { text: 'Sillones',      icon: <Chair />,          path: '/chairs',    roles: ['admin', 'enfermera'] },
   { text: 'Inventario',    icon: <Inventory />,      path: '/inventory', roles: ['admin', 'enfermera', 'administracion'] },
   { text: 'Reportes',      icon: <Assessment />,     path: '/reports',   roles: ['admin', 'administracion'] },
-  { text: 'Usuarios',     icon: <ManageAccounts />, path: '/users',     roles: ['admin'] },
+  { text: 'Usuarios',    icon: <ManageAccounts />, path: '/users',  roles: ['admin'] },
+  { text: 'Auditoría',  icon: <History />,        path: '/audit',  roles: ['admin'] },
 ];
 
 const Layout = () => {
