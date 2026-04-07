@@ -39,6 +39,7 @@
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -105,6 +106,12 @@ app.use((req, res, next) => {
   console.log(`${new Date().toLocaleTimeString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// === Servir frontend compilado (modo local Windows sin internet) ===
+// Si existe el build de React en frontend/build/, se sirve como archivos estáticos.
+// Esto permite que un solo proceso Node atienda tanto la API como la UI.
+const frontendBuild = path.join(__dirname, '../../frontend/build');
+app.use(express.static(frontendBuild));
 
 // === Rutas de información ===
 // Ruta raíz — devuelve información básica de la API sin requerir autenticación.
@@ -664,6 +671,18 @@ app.get('/api/chairs/:id/history', auth, async (req, res) => {
 // ==================== 404 y ERROR HANDLER ====================
 app.get('/__test', (req, res) => {
   res.json({ ok: true });
+});
+
+// Catch-all para React Router (modo local): cualquier ruta que no sea /api ni /health
+// devuelve el index.html del build para que React Router maneje la navegación.
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path === '/health' || req.path === '/__test') {
+    return next();
+  }
+  const indexPath = path.join(frontendBuild, 'index.html');
+  res.sendFile(indexPath, err => {
+    if (err) next(); // si el build no existe, continúa al 404
+  });
 });
 
 app.use((req, res) => {
