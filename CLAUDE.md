@@ -4,6 +4,19 @@
 
 ---
 
+## Reglas de Operación
+
+1. Pensar antes de actuar. Leer los archivos existentes antes de escribir código.
+2. Ser conciso en el output pero exhaustivo en el razonamiento.
+3. Preferir editar sobre reescribir archivos completos.
+4. No releer archivos ya leídos a menos que el archivo pueda haber cambiado.
+5. Probar el código antes de declararlo terminado.
+6. Sin introducciones aduladoras ni cierres de relleno.
+7. Mantener las soluciones simples y directas.
+8. Las instrucciones del usuario siempre tienen prioridad sobre este archivo.
+
+---
+
 ## Descripción del Proyecto
 
 **CDIEMApp** es un sistema de gestión clínica para un centro oncológico.
