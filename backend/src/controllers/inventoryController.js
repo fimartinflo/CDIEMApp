@@ -1,6 +1,24 @@
-const { Op } = require('sequelize');
+/**
+ * inventoryController.js — Controlador de inventario de medicamentos
+ *
+ * NOTA DE NAMING: "Inventory" en las variables es el modelo Medication.
+ * El inventario NO usa un modelo propio (Inventory.js existe pero es legacy).
+ * Se usa Medication porque es el modelo que integra con ChairSession
+ * y SessionMedication para el flujo clínico de sillones.
+ *
+ * Alertas automáticas:
+ *  - Stock bajo: cantidad <= minimoStock
+ *  - Por vencer: fechaExpiracion en los próximos 30 días
+ *  - Vencido: fechaExpiracion < hoy
+ *
+ * Control de acceso (definido en inventoryRoutes.js):
+ *  - Lectura: admin + enfermera + administracion
+ *  - Escritura (crear/editar/eliminar/stock): admin + administracion
+ */
+const { Op }    = require('sequelize');
 // Usa el modelo Medication que es el que integra con el flujo de sillones/sesiones
 const Inventory = require('../models/Medication');
+const logAudit  = require('../utils/audit');
 
 const inventoryController = {
   // Obtener todos los medicamentos
@@ -75,6 +93,10 @@ const inventoryController = {
   createItem: async (req, res, next) => {
     try {
       const item = await Inventory.create(req.body);
+
+      await logAudit({ req, accion: 'CREAR_MEDICAMENTO', entidad: 'Medication',
+        entidadId: item.id, detalles: { nombre: item.nombre, cantidad: item.cantidad } });
+
       res.status(201).json({
         success: true,
         message: 'Medicamento creado exitosamente',
@@ -99,7 +121,10 @@ const inventoryController = {
       }
       
       await item.update(req.body);
-      
+
+      await logAudit({ req, accion: 'ACTUALIZAR_MEDICAMENTO', entidad: 'Medication',
+        entidadId: item.id, detalles: { nombre: item.nombre } });
+
       res.json({
         success: true,
         message: 'Medicamento actualizado exitosamente',
@@ -124,7 +149,10 @@ const inventoryController = {
       }
       
       await item.destroy();
-      
+
+      await logAudit({ req, accion: 'ELIMINAR_MEDICAMENTO', entidad: 'Medication',
+        entidadId: item.id, detalles: { nombre: item.nombre } });
+
       res.json({
         success: true,
         message: 'Medicamento eliminado exitosamente'
@@ -168,15 +196,17 @@ const inventoryController = {
         });
       }
       
-      await item.update({
-        cantidad: nuevaCantidad
-      });
-      
+      const cantidadAnterior = item.cantidad;
+      await item.update({ cantidad: nuevaCantidad });
+
+      await logAudit({ req, accion: `STOCK_${tipo.toUpperCase()}`, entidad: 'Medication',
+        entidadId: item.id, detalles: { nombre: item.nombre, cantidadAnterior, cantidadNueva: nuevaCantidad, motivo } });
+
       res.json({
         success: true,
         message: `Stock ${tipo === 'entrada' ? 'aumentado' : 'reducido'} exitosamente`,
         data: {
-          cantidadAnterior: item.cantidad,
+          cantidadAnterior,
           cantidadNueva: nuevaCantidad,
           motivo
         }

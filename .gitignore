@@ -3,8 +3,11 @@ node_modules/
 npm-debug.log*
 yarn-error.log*
 
-# Environment
+# Environment (nunca subir credenciales reales)
 .env
+.env.*
+!.env.example
+!.env.supabase.example
 
 # Database
 *.sqlite

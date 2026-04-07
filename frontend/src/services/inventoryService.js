@@ -1,3 +1,12 @@
+/**
+ * inventoryService.js — Servicio de inventario de medicamentos (frontend)
+ *
+ * Encapsula todas las llamadas al endpoint /api/inventory.
+ *
+ * Permisos de escritura (crear, editar, eliminar, actualizar stock):
+ *  Solo admin y administracion — los botones de escritura en la UI
+ *  están condicionados por el rol, pero el backend también los rechaza.
+ */
 import api from './api';
 
 const inventoryService = {

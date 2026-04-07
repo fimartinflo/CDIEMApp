@@ -1,3 +1,14 @@
+/**
+ * chairService.js — Servicio de sillones (frontend)
+ *
+ * Encapsula todas las llamadas HTTP al módulo de sillones.
+ *
+ * Arquitectura dual del backend:
+ *  - CRUD básico (crear, editar, eliminar): manejado por chairRoutes.js
+ *  - Operaciones de sesión clínica (asignar, liberar): inline en app.js
+ * Ambas rutas comparten el prefijo /api/chairs, por lo que desde el
+ * frontend son transparentes.
+ */
 import api from './api';
 
 const chairService = {

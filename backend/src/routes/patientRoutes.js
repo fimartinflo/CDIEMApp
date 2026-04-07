@@ -8,6 +8,9 @@ const allowRoles = require('../middleware/roles');
 router.get('/search', patientController.searchPatients);
 router.get('/upcoming-visits', patientController.getUpcomingVisits);
 
+// Exportar CSV (requiere auth + rol clínico — se registra antes del router.use de auth)
+router.get('/export', authMiddleware, allowRoles('admin', 'enfermera'), patientController.exportPatients);
+
 // Resto de rutas: requieren auth + rol clínico (admin o enfermera)
 router.use(authMiddleware);
 router.use(allowRoles('admin', 'enfermera'));

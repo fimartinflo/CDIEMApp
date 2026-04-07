@@ -1,10 +1,20 @@
-const express = require('express');
-const router = express.Router();
+/**
+ * inventoryRoutes.js — Rutas de inventario de medicamentos
+ *
+ * Política de acceso:
+ *  - Lectura (GET):   admin + enfermera + administracion
+ *  - Escritura (POST/PUT/DELETE): admin + administracion
+ *    → la enfermera puede ver el inventario pero NO modificarlo
+ *
+ * Montado en app.js como: app.use('/api/inventory', inventoryRoutes)
+ */
+const express   = require('express');
+const router    = express.Router();
 const inventoryController = require('../controllers/inventoryController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware }  = require('../middleware/auth');
 const allowRoles = require('../middleware/roles');
 
-// Todas las rutas requieren auth; lectura: admin + enfermera + administracion
+// Aplicar autenticación y lectura a todos los endpoints de inventario
 router.use(authMiddleware);
 router.use(allowRoles('admin', 'enfermera', 'administracion'));
 

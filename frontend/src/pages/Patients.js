@@ -38,7 +38,8 @@ import {
   Search as SearchIcon,
   CalendarToday as CalendarIcon,
   History as HistoryIcon,
-  MedicalServices as MedIcon
+  MedicalServices as MedIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import patientService from '../services/patientService';
 import PatientForm from '../components/PatientForm';
@@ -115,6 +116,20 @@ const Patients = () => {
     }, 500);
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]); // eslint-disable-line
+
+  const handleExportCSV = async () => {
+    try {
+      const response = await api.get('/patients/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pacientes_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Error al exportar pacientes');
+    }
+  };
 
   const handleSearch = async () => {
     try {
@@ -276,6 +291,14 @@ const Patients = () => {
               </Select>
             </FormControl>
           </Box>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportCSV}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Exportar CSV
+          </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}

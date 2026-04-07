@@ -37,6 +37,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.setItem('session_expired', '1');
       window.location.href = '/login';
     }
     return Promise.reject(error);

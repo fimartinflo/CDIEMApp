@@ -4,6 +4,19 @@
 
 ---
 
+## Reglas de Operación
+
+1. Pensar antes de actuar. Leer los archivos existentes antes de escribir código.
+2. Ser conciso en el output pero exhaustivo en el razonamiento.
+3. Preferir editar sobre reescribir archivos completos.
+4. No releer archivos ya leídos a menos que el archivo pueda haber cambiado.
+5. Probar el código antes de declararlo terminado.
+6. Sin introducciones aduladoras ni cierres de relleno.
+7. Mantener las soluciones simples y directas.
+8. Las instrucciones del usuario siempre tienen prioridad sobre este archivo.
+
+---
+
 ## Descripción del Proyecto
 
 **CDIEMApp** es un sistema de gestión clínica para un centro oncológico.
@@ -19,7 +32,7 @@ Permite administrar pacientes, sillas de tratamiento y medicamentos, con funcion
 |------|-----------|
 | Backend | Node.js + Express v5.2.1 |
 | Frontend | React v19.2.4 |
-| Base de datos | SQLite3 (local, offline-first) |
+| Base de datos | SQLite3 (offline) / PostgreSQL via Supabase (cloud) / Turso (edge) |
 | ORM | Sequelize v6.37.7 |
 | Autenticación | JWT (jsonwebtoken v9.0.3) + bcryptjs v3.0.3 |
 | UI | Material-UI (MUI) v7.3.7 |
@@ -42,7 +55,17 @@ CDIEMApp/
 │   ├── src/
 │   │   ├── app.js               # Entry point del servidor Express
 │   │   ├── config/
-│   │   │   └── database.js      # Configuración SQLite/Sequelize
+│   │   │   └── database.js      # Configuración SQLite / Turso / PostgreSQL
+│   │   ├── database/            # Sistema de migraciones (umzug)
+│   │   │   ├── migrate.js       # Runner: migrate() / migrateUndo() / status()
+│   │   │   └── migrations/
+│   │   │       ├── 001-create-users.js
+│   │   │       ├── 002-create-patients.js
+│   │   │       ├── 003-create-chairs.js
+│   │   │       ├── 004-create-medications.js
+│   │   │       ├── 005-create-chair-sessions.js
+│   │   │       ├── 006-create-session-medications.js
+│   │   │       └── 007-create-visits.js
 │   │   ├── models/              # Modelos Sequelize
 │   │   │   ├── Patient.js
 │   │   │   ├── Chair.js
@@ -70,8 +93,8 @@ CDIEMApp/
 │   │   │   └── errorHandler.js  # Manejo centralizado de errores
 │   │   └── utils/
 │   │       └── response.js      # success(res, message, data, status) / error(res, message, code, status)
-│   ├── init-db.js               # Script de inicialización y seed (incluye usuarios)
-│   ├── test-api.js              # Suite de 67 tests de integración
+│   ├── init-db.js               # Inicialización idempotente + seed (usa migraciones)
+│   ├── test-api.js              # Suite de 63 tests de integración
 │   └── package.json
 │
 └── frontend/
@@ -162,10 +185,19 @@ module.exports.authMiddleware = authMiddleware; // const { authMiddleware } = re
 ### Autenticación
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Login → retorna JWT |
+| POST | `/api/auth/login` | Login → retorna JWT *(rate limit: 10 req/15 min/IP)* |
 | POST | `/api/auth/register` | Registrar usuario |
 | GET | `/api/auth/profile` | Perfil del usuario autenticado |
 | PUT | `/api/auth/change-password` | Cambiar contraseña |
+
+### Gestión de Usuarios *(admin only)*
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/auth/users` | Listar todos los usuarios |
+| POST | `/api/auth/users` | Crear usuario |
+| PUT | `/api/auth/users/:id` | Actualizar nombre/email/rol |
+| PUT | `/api/auth/users/:id/toggle-active` | Activar / desactivar (no puede desactivarse a sí mismo) |
+| PUT | `/api/auth/users/:id/reset-password` | Resetear contraseña (min 6 chars) |
 
 **Usuarios (seed en init-db.js, contraseñas hasheadas con bcrypt):**
 - `admin` / `admin123` → rol `admin` (acceso completo)
@@ -185,6 +217,7 @@ module.exports.authMiddleware = authMiddleware; // const { authMiddleware } = re
 | PUT | `/api/patients/:id` | Actualizar paciente |
 | DELETE | `/api/patients/:id` | Desactivar (borrado lógico → estado: inactivo) |
 | GET | `/api/patients/search` | Búsqueda por nombre/RUT/pasaporte |
+| GET | `/api/patients/export` | Exportar CSV (BOM UTF-8, sep `;`) — admin + enfermera |
 | POST | `/api/patients/:id/schedule-visit` | Agendar visita |
 | GET | `/api/patients/upcoming-visits` | Próximas visitas programadas |
 | GET | `/api/patients/:id/history` | Historial de sesiones clínicas |
@@ -248,10 +281,14 @@ El mismo modelo `Medication` se usa en `SessionMedication` para el flujo de sill
 
 ### Backend
 ```bash
-npm start        # Producción: node src/app.js
-npm run dev      # Desarrollo con nodemon (auto-restart)
-npm run init-db  # Inicializar BD con datos de prueba
-node test-full.mjs  # 63 tests de integración (requiere BD limpia + servidor en :3001)
+npm start              # Producción: node src/app.js
+npm run dev            # Desarrollo con nodemon (auto-restart)
+npm run init-db        # Aplica migraciones pendientes + seed (no borra datos)
+npm run init-db:force  # Reset completo: borra tablas, recrea y seed (solo dev)
+npm run migrate        # Aplica solo migraciones pendientes (sin seed)
+npm run migrate:undo   # Revierte la última migración aplicada
+npm run migrate:status # Lista estado de cada migración (✅ aplicada / ⏳ pendiente)
+node test-full.mjs     # 63 tests de integración (requiere BD limpia + servidor en :3001)
 ```
 
 ### Frontend
@@ -280,15 +317,16 @@ npm run build    # Build de producción
 ### Servicios
 - **`api.js`** — Axios con baseURL dinámica: `process.env.REACT_APP_API_URL || 'http://localhost:3001/api'`
   - Inyecta token JWT automáticamente: `Authorization: Bearer <token>`
-  - Redirige a `/login` en errores 401, **excepto** si el request es a `/auth/login`
-    (evita loop de recarga cuando las credenciales son incorrectas)
+  - En error 401 (no login): limpia localStorage, setea `sessionStorage.session_expired='1'`, redirige a `/login`
+  - Login.js lee el flag en `useEffect` → muestra Snackbar "Tu sesión ha expirado"
 - **`patientService.js`** — CRUD + `validateRUT()` + `formatRUT()` locales
 - **`chairService.js`** — CRUD + `assignPatient(id, patientId, medicamentos)` + `releaseChair(id)`
 - **`inventoryService.js`** — CRUD completo + `updateQuantity(id, cantidad, tipo, motivo)`
 
 ### Páginas
 - **`Dashboard.js`** — Consume `GET /api/dashboard`, filtra tarjetas de acceso rápido según rol del usuario
-- **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, historial clínico con duración en HH:MM:SS
+- **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, historial clínico con duración en HH:MM:SS; botón "Exportar CSV" → `GET /api/patients/export`
+- **`Users.js`** — Solo admin: tabla con crear/editar/toggle-active/reset-password usando Dialogs MUI
 - **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos
 - **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"; botones de escritura visibles solo para `admin` y `administracion`
 - **`Reports.js`** — Selección de período, tabla expandible por paciente, exportación Excel (CSV con BOM para Excel español), diálogo de informe individual con impresión funcional
@@ -338,6 +376,17 @@ npm run build    # Build de producción
 - ✅ **MUI confirm dialogs**: `window.confirm()` reemplazado en Chairs.js e Inventory.js
 - ✅ **PYTHON_BIN configurable**: `process.env.PYTHON_BIN || 'python3'` en reportController.js
 - ✅ **Timeout proceso Python**: `PYTHON_TIMEOUT_MS` (default 60s), mata el proceso con `SIGTERM`
+- ✅ **A1 — Gestión de usuarios (admin)**: `GET|POST|PUT /api/auth/users`, toggle-active, reset-password; página `Users.js` con tabla + Dialogs; menú "Usuarios" en Layout (solo admin); ruta `/users` con `RoleRoute(['admin'])`
+- ✅ **A2 — Rate limiting login**: `express-rate-limit` en `POST /api/auth/login` (10 req / 15 min por IP)
+- ✅ **A3 — Sesión expirada**: `sessionStorage.session_expired` → Snackbar warning en Login.js
+- ✅ **B1 — Export CSV pacientes**: `GET /api/patients/export` (BOM UTF-8, separador `;`, compatible Excel español); botón "Exportar CSV" en Patients.js
+- ✅ **B3 — Health check mejorado**: `GET /health` incluye `database.status`, `database.dialect`, `uptime`, `node`, `version`
+- ✅ **B4 — README actualizado**: refleja todos los módulos y endpoints actuales
+- ✅ **C1 — Gzip compression**: `compression` registrado antes de CORS en `app.js`
+- ✅ **C2 — Chair history paginado**: `GET /api/chairs/:id/history?page=&limit=` → respuesta con `pagination: {total, page, pages, limit}`
+- ✅ **B2 — Log de auditoría**: modelo `AuditLog` + migration 008 (con índices), `utils/audit.js` helper no-bloqueante; hooks en controllers (patient, inventory) y inline en app.js (assign/release); `GET /api/audit` (admin only) con filtros y paginación; Dashboard muestra tarjeta y métrica de usuarios (admin)
+- ✅ **C3 — Playwright E2E**: setup en `e2e/` con `playwright.config.js` + 3 archivos de test: `login.spec.js`, `dashboard.spec.js`, `chairs.spec.js`
+- ✅ **Comentarios**: todos los archivos del proyecto comentados con JSDoc/inline (controllers, models, middleware, routes, utils, services, components, migrations)
 
 ### Variables de Entorno (producción)
 
@@ -358,9 +407,57 @@ NODE_ENV=production
 REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
+- ✅ **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
+- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 8 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
+- ✅ **Supabase (PostgreSQL cloud):** `DB_DIALECT=postgres` + `DATABASE_URL`; pool conservador; SSL sin verificación de cert; `scripts/sqlite-to-postgres.js` para migrar datos; `backend/.env.supabase` como plantilla
+- ✅ **pg + pg-hstore** instalados en backend (dependencias PostgreSQL)
+
+### Modos de Base de Datos
+
+El proyecto soporta **tres modos** seleccionables por variable de entorno:
+
+| Modo | `DB_DIALECT` | Cuándo usar |
+|------|-------------|-------------|
+| **SQLite local** (default) | no definido o `sqlite` | Offline, presentaciones, desarrollo |
+| **Supabase / PostgreSQL** | `postgres` | Online, producción, evaluación cloud |
+| **Turso (libSQL)** | `turso` | Alternativa cloud SQL edge |
+
+### Variables de Entorno — modo Supabase
+
+**Para activar Supabase:** `cp backend/.env.supabase.example backend/.env`
+(editar con las credenciales reales desde Supabase Dashboard)
+
+```
+DB_DIALECT=postgres
+DATABASE_URL=postgresql://postgres.[REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+```
+
+**Inicializar tablas en Supabase** (primera vez):
+```bash
+DB_DIALECT=postgres DATABASE_URL="..." node backend/init-db.js
+```
+
+**Migrar datos existentes de SQLite a Supabase:**
+```bash
+# Requiere que las tablas ya existan en Supabase (correr init-db primero)
+DATABASE_URL="..." npm run sync-to-supabase          # idempotente
+DATABASE_URL="..." npm run sync-to-supabase:force    # trunca y reinsersta todo
+```
+
+**Para volver a SQLite local:** eliminar o comentar `DB_DIALECT` en `.env`.
+
+### Variables de Entorno — modo Turso
+
+**Para activar Turso:** `cp backend/.env.turso backend/.env && node backend/init-db.js`
+
+```
+DB_DIALECT=turso
+TURSO_URL=libsql://cdiemapp-fimartinflo.aws-us-east-2.turso.io
+TURSO_AUTH_TOKEN=<ver backend/.env.turso>
+```
+
 ### Pendiente
-- Migraciones Sequelize en lugar de `sync()`
-- Migración futura a base de datos online (PostgreSQL/MySQL)
+- Ninguno relacionado a BD — los tres modos están operativos
 
 ---
 
@@ -383,4 +480,35 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 
 ---
 
-*Última actualización: 2026-03-30 — Tests frontend (32/32), fix RUT edge case, silent refresh sillones, MUI confirm dialogs, PYTHON_BIN/PYTHON_TIMEOUT_MS configurables*
+---
+
+## Próximas Mejoras Sugeridas
+
+> Esta sección se actualiza al final de cada sesión de trabajo.
+
+### 🔴 Alta prioridad
+
+| # | Mejora | Descripción |
+|---|--------|-------------|
+| A1 | **Página de gestión de usuarios** | El backend tiene endpoints CRUD de usuarios (`/api/auth/register`, etc.) pero no hay UI. El rol `admin` debería poder crear, editar y desactivar usuarios desde el frontend. |
+| A2 | **Rate limiting en login** | `POST /api/auth/login` no tiene límite de intentos — vulnerable a fuerza bruta. Implementar con `express-rate-limit` (ej. 10 intentos / 15 min por IP). |
+| A3 | **Mensaje claro al expirar sesión** | Cuando el JWT caduca (8h), el usuario es redirigido a `/login` sin explicación. Mostrar un Snackbar "Sesión expirada, inicia sesión nuevamente" antes de redirigir. |
+
+### 🟡 Media prioridad
+
+| # | Mejora | Descripción |
+|---|--------|-------------|
+| B1 | **Exportación de pacientes a CSV/Excel** | Botón en la página de Pacientes para exportar la lista filtrada. Reutiliza el patrón de `downloadBlob` de Reports.js. |
+| B2 | **Log de auditoría** | Registrar en BD quién hizo qué y cuándo: cambios de stock, asignaciones de sillón, modificaciones de paciente. Útil para trazabilidad clínica. |
+| B3 | **Health check mejorado** | `GET /health` actualmente devuelve solo `{ status: 'ok' }`. Agregar estado de la BD, uptime, versión del servidor y dialecto en uso. |
+| B4 | **README.md actualizado** | El README está desactualizado. Actualizarlo con el stack actual, instrucciones de instalación, comandos de migración y modos de BD. |
+
+### 🟢 Baja prioridad / técnico
+
+| # | Mejora | Descripción |
+|---|--------|-------------|
+| C1 | **Compresión gzip en Express** | Agregar `compression` middleware para reducir el tamaño de las respuestas JSON en producción. |
+| C2 | **Paginación en historial de sillón** | `GET /chairs/:id/history` devuelve todas las sesiones sin límite. Agregar `page` y `limit` como en pacientes. |
+| C3 | **Tests E2E con Playwright** | Los tests actuales son unitarios (RTL) e integración (test-api.js). Playwright permitiría tests del flujo completo frontend+backend en un navegador real. |
+
+*Última actualización: 2026-04-06 — B2 audit log, C3 Playwright E2E, Dashboard tarjeta usuarios, comentarios completos en todo el proyecto*

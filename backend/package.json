@@ -7,6 +7,12 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "init-db": "node init-db.js",
+    "init-db:force": "node init-db.js --force",
+    "migrate": "node src/database/migrate.js",
+    "migrate:undo": "node src/database/migrate.js --undo",
+    "migrate:status": "node src/database/migrate.js --status",
+    "sync-to-supabase": "node scripts/sqlite-to-postgres.js",
+    "sync-to-supabase:force": "node scripts/sqlite-to-postgres.js --force",
     "test": "node test-api.js"
   },
   "keywords": [
@@ -17,14 +23,20 @@
   "author": "Tu Nombre",
   "license": "ISC",
   "dependencies": {
+    "@libsql/sqlite3": "^0.3.1",
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.4",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "umzug": "^3.8.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
