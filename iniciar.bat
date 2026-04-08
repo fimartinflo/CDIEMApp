@@ -19,3 +19,11 @@ set "APP_DIR=%APP_DIR:~0,-1%"
 
 cd /d "%APP_DIR%\backend"
 node src/app.js
+if errorlevel 1 (
+    echo.
+    echo ============================================
+    echo  ERROR: El servidor se cerro inesperadamente.
+    echo  Revisa el mensaje de error arriba.
+    echo ============================================
+    pause
+)
