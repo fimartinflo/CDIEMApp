@@ -15,6 +15,7 @@ let TOKEN = '';
 let patientId = null;
 let chairId = null;
 let medicationId = null;
+let newUserId = null;
 
 let passed = 0;
 let failed = 0;
@@ -324,7 +325,7 @@ async function testClinicalFlow() {
   // Liberar sillón
   const r8 = await req('POST', `/api/chairs/${chairId}/release`, {});
   assert('POST /chairs/:id/release → 200', r8.status === 200, `got ${r8.status}: ${JSON.stringify(r8.body)}`);
-  assert('Duración registrada', typeof r8.body.data?.duracionMinutos === 'number');
+  assert('Duración registrada', typeof r8.body.data?.duracionSegundos === 'number');
 
   // Verificar sillón liberado
   const r9 = await req('GET', '/api/chairs');
@@ -345,6 +346,111 @@ async function testPatientDelete() {
 
   const r2 = await req('GET', `/api/patients/${patientId}`);
   assert('Paciente inactivo pero aún existe', r2.status === 200 && r2.body.data?.estado === 'inactivo', `estado: ${r2.body.data?.estado}`);
+}
+
+async function testUserManagement() {
+  section('GESTIÓN DE USUARIOS (ADMIN)');
+
+  // Listar usuarios
+  const r1 = await req('GET', '/api/auth/users');
+  assert('GET /api/auth/users → 200', r1.status === 200, `got ${r1.status}`);
+  assert('Retorna array de usuarios', Array.isArray(r1.body.data));
+  assert('Al menos 3 usuarios del seed', (r1.body.data?.length ?? 0) >= 3);
+
+  // Crear usuario nuevo
+  const r2 = await req('POST', '/api/auth/users', {
+    username: `testuser_${RUN_ID}`,
+    password: 'test123456',
+    email: `testuser_${RUN_ID}@cdiem.cl`,
+    fullName: 'Usuario Test Integración',
+    role: 'enfermera'
+  });
+  assert('POST /api/auth/users → 201', r2.status === 201, `got ${r2.status}: ${JSON.stringify(r2.body)}`);
+  assert('Usuario creado con ID', !!r2.body.data?.id);
+  if (r2.body.data?.id) newUserId = r2.body.data.id;
+
+  // Actualizar usuario
+  const r3 = await req('PUT', `/api/auth/users/${newUserId}`, {
+    fullName: 'Usuario Test Actualizado',
+    email: `updated_${RUN_ID}@cdiem.cl`,
+    role: 'administracion'
+  });
+  assert('PUT /api/auth/users/:id → 200', r3.status === 200, `got ${r3.status}`);
+  assert('Nombre actualizado', r3.body.data?.fullName === 'Usuario Test Actualizado');
+
+  // Toggle desactivar
+  const r4 = await req('PUT', `/api/auth/users/${newUserId}/toggle-active`);
+  assert('Toggle-active (desactivar) → 200', r4.status === 200, `got ${r4.status}`);
+  assert('Usuario desactivado', r4.body.data?.isActive === false);
+
+  // Toggle reactivar
+  const r5 = await req('PUT', `/api/auth/users/${newUserId}/toggle-active`);
+  assert('Toggle-active (reactivar) → 200', r5.status === 200, `got ${r5.status}`);
+  assert('Usuario reactivado', r5.body.data?.isActive === true);
+
+  // Reset contraseña
+  const r6 = await req('PUT', `/api/auth/users/${newUserId}/reset-password`, {
+    newPassword: 'nuevapass123'
+  });
+  assert('PUT /api/auth/users/:id/reset-password → 200', r6.status === 200, `got ${r6.status}`);
+  assert('Respuesta success:true', r6.body.success === true);
+
+  // Login con contraseña reseteada
+  const r7 = await req('POST', '/api/auth/login', {
+    username: `testuser_${RUN_ID}`,
+    password: 'nuevapass123'
+  }, false);
+  assert('Login con contraseña reseteada → 200', r7.status === 200, `got ${r7.status}`);
+
+  // Enfermera no puede listar usuarios → 403
+  const enfLogin = await req('POST', '/api/auth/login', { username: 'enfermera', password: 'enfermera123' }, false);
+  const adminToken = TOKEN;
+  TOKEN = enfLogin.body.data?.token;
+  const r8 = await req('GET', '/api/auth/users');
+  assert('Enfermera no puede listar usuarios → 403', r8.status === 403, `got ${r8.status}`);
+  TOKEN = adminToken;
+}
+
+async function testMiscEndpoints() {
+  section('ENDPOINTS ADICIONALES (export, reset, audit)');
+
+  // Export CSV pacientes
+  const r1 = await req('GET', '/api/patients/export');
+  assert('GET /api/patients/export → 200', r1.status === 200, `got ${r1.status}`);
+  assert('Respuesta es string CSV', typeof r1.body === 'string');
+  assert('CSV contiene cabecera "Nombre Completo"', (r1.body || '').includes('Nombre Completo'));
+
+  // Chair reset: crear sillón en mantenimiento y resetearlo
+  const r2 = await req('POST', '/api/chairs', {
+    numero: `SM_${RUN_ID}`,
+    nombre: 'Sillón Reset Test',
+    ubicacion: 'Sala D',
+    estado: 'mantenimiento',
+    activo: true
+  });
+  assert('Crear sillón en mantenimiento para test → 201', r2.status === 201, `got ${r2.status}`);
+  const maintChairId = r2.body.data?.id;
+
+  if (maintChairId) {
+    const r3 = await req('POST', `/api/chairs/${maintChairId}/reset`);
+    assert('POST /api/chairs/:id/reset → 200', r3.status === 200, `got ${r3.status}: ${JSON.stringify(r3.body)}`);
+    assert('Sillón vuelve a "disponible" tras reset', r3.body.data?.estado === 'disponible', `estado: ${r3.body.data?.estado}`);
+  }
+
+  // Audit log
+  const r4 = await req('GET', '/api/audit');
+  assert('GET /api/audit → 200', r4.status === 200, `got ${r4.status}`);
+  assert('Retorna array de eventos', Array.isArray(r4.body.data));
+  assert('Tiene paginación', !!r4.body.pagination);
+  assert('Al menos un evento registrado', (r4.body.data?.length ?? 0) >= 1);
+
+  // Enfermera no puede ver audit → 403
+  const enfLogin2 = await req('POST', '/api/auth/login', { username: 'enfermera', password: 'enfermera123' }, false);
+  const adminToken2 = TOKEN;
+  TOKEN = enfLogin2.body.data?.token;
+  const r5 = await req('GET', '/api/audit');
+  assert('Enfermera no puede ver audit → 403', r5.status === 403, `got ${r5.status}`);
+  TOKEN = adminToken2;
 }
 
 // ── Runner ───────────────────────────────────────────────────────────────────
@@ -372,6 +478,8 @@ async function main() {
     await testChairs();
     await testClinicalFlow();
     await testPatientDelete();
+    await testUserManagement();
+    await testMiscEndpoints();
   } catch (err) {
     console.error('\n💥 Error fatal en tests:', err.message);
     failed++;

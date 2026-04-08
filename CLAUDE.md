@@ -94,7 +94,7 @@ CDIEMApp/
 │   │   └── utils/
 │   │       └── response.js      # success(res, message, data, status) / error(res, message, code, status)
 │   ├── init-db.js               # Inicialización idempotente + seed (usa migraciones)
-│   ├── test-api.js              # Suite de 63 tests de integración
+│   ├── test-api.js              # Suite de 93 tests de integración
 │   └── package.json
 │
 └── frontend/
@@ -288,7 +288,7 @@ npm run init-db:force  # Reset completo: borra tablas, recrea y seed (solo dev)
 npm run migrate        # Aplica solo migraciones pendientes (sin seed)
 npm run migrate:undo   # Revierte la última migración aplicada
 npm run migrate:status # Lista estado de cada migración (✅ aplicada / ⏳ pendiente)
-node test-full.mjs     # 63 tests de integración (requiere BD limpia + servidor en :3001)
+node test-api.js       # 93 tests de integración (requiere BD limpia + servidor en :3001)
 ```
 
 ### Frontend
@@ -369,8 +369,8 @@ npm run build    # Build de producción
 - ✅ Variables de entorno para API_URL y CORS
 - ✅ Scripts de producción: `ecosystem.config.js` (PM2), `nginx.conf.example`
 - ✅ `reset-passwords.js`: recuperación de credenciales sin borrar datos
-- ✅ Suite de 63 tests de integración — 63/63 pasando
-- ✅ **32 tests frontend** (Jest + RTL): Login, Dashboard, Patients, Chairs, Inventory — 32/32 pasando
+- ✅ **Suite de 93 tests de integración** (`test-api.js`) — 93/93 pasando; cubre auth, pacientes, inventario, sillones, flujo clínico, gestión usuarios, export CSV, chair reset y audit log
+- ✅ **49 tests frontend** (Jest + RTL): Login, Dashboard, Patients, Chairs, Inventory, Reports, Users — 49/49 pasando
 - ✅ **RUT edge case fix**: `createPatient`/`updatePatient` rechazan RUT vacío con `tipoIdentificacion='rut'`
 - ✅ **Refresco silencioso de sillones**: `silentLoadChairs()` actualiza sin spinner tras acciones
 - ✅ **MUI confirm dialogs**: `window.confirm()` reemplazado en Chairs.js e Inventory.js
