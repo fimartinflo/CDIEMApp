@@ -20,7 +20,8 @@ const sequelize = require('../config/database');
 
 const umzug = new Umzug({
   migrations: {
-    glob: path.join(__dirname, 'migrations', '*.js'),
+    // path.join usa backslashes en Windows; glob requiere forward slashes.
+    glob: path.join(__dirname, 'migrations', '*.js').replace(/\\/g, '/'),
     resolve: ({ name, path: migPath, context }) => {
       const migration = require(migPath);
       return {
