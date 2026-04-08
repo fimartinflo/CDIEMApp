@@ -675,7 +675,8 @@ app.get('/__test', (req, res) => {
 
 // Catch-all para React Router (modo local): cualquier ruta que no sea /api ni /health
 // devuelve el index.html del build para que React Router maneje la navegación.
-app.get('*', (req, res, next) => {
+// Express v5 requiere wildcard con nombre: /*path (no '*' a secas).
+app.get('/*path', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path === '/health' || req.path === '/__test') {
     return next();
   }
