@@ -31,6 +31,21 @@ const FORCE = process.argv.includes('--force');
     // Aplica migraciones pendientes (crea las tablas que falten)
     await migrate();
 
+    // Verificación de integridad: si umzug dice "sin pendientes" pero la tabla
+    // Users no existe (estado corrupto por instalación parcial anterior),
+    // limpiar el registro de migraciones y volver a aplicarlas todas.
+    try {
+      await sequelize.query('SELECT 1 FROM "Users" LIMIT 1');
+    } catch (tableErr) {
+      if (tableErr.message && tableErr.message.includes('no such table')) {
+        console.log('⚠️  Estado de migraciones inconsistente detectado — reiniciando...');
+        await sequelize.query('DROP TABLE IF EXISTS "SequelizeMeta"');
+        await migrate();
+      } else {
+        throw tableErr;
+      }
+    }
+
     // ── Seed: usuarios del sistema ──────────────────────────────────────────
     const userCount = await User.count();
     if (userCount === 0) {
