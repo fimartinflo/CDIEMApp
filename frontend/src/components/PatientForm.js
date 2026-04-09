@@ -49,7 +49,10 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
     genero: '',
     generoOtro: '',
     direccion: '',
-    estado: 'activo'
+    estado: 'activo',
+    diagnostico: '',
+    protocoloTratamiento: '',
+    alergias: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -69,7 +72,10 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
         genero: patient.genero || '',
         generoOtro: patient.generoOtro || '',
         direccion: patient.direccion || '',
-        estado: patient.estado || 'activo'
+        estado: patient.estado || 'activo',
+        diagnostico: patient.diagnostico || '',
+        protocoloTratamiento: patient.protocoloTratamiento || '',
+        alergias: patient.alergias || ''
       });
     }
   }, [patient]);
@@ -381,27 +387,61 @@ const PatientForm = ({ patient, onSave, onCancel }) => {
           </Grid>
         </Grid>
 
-        {/* ── Sección: Clínica (solo creación) ── */}
-        {!patient && (
-          <>
-            <SectionHeader icon={<MedicalIcon />} title="Información Clínica" />
-            <Divider sx={{ mb: 2 }} />
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Estado Inicial</InputLabel>
-                  <Select name="estado" value={formData.estado} onChange={handleChange} label="Estado Inicial">
-                    <MenuItem value="activo">Activo</MenuItem>
-                    <MenuItem value="inactivo">Inactivo</MenuItem>
-                  </Select>
-                  <FormHelperText>
-                    Normalmente se crea como "Activo"
-                  </FormHelperText>
-                </FormControl>
-              </Grid>
+        {/* ── Sección: Información Clínica ── */}
+        <SectionHeader icon={<MedicalIcon />} title="Información Clínica" />
+        <Divider sx={{ mb: 2 }} />
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {!patient && (
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Estado Inicial</InputLabel>
+                <Select name="estado" value={formData.estado} onChange={handleChange} label="Estado Inicial">
+                  <MenuItem value="activo">Activo</MenuItem>
+                  <MenuItem value="inactivo">Inactivo</MenuItem>
+                </Select>
+                <FormHelperText>Normalmente se crea como "Activo"</FormHelperText>
+              </FormControl>
             </Grid>
-          </>
-        )}
+          )}
+
+          <Grid item xs={12} sm={!patient ? 6 : 12}>
+            <TextField
+              fullWidth
+              label="Diagnóstico"
+              name="diagnostico"
+              value={formData.diagnostico}
+              onChange={handleChange}
+              placeholder="Ej: Cáncer de mama, Linfoma Hodgkin..."
+              helperText="Tipo de cáncer u diagnóstico oncológico"
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Protocolo de Tratamiento"
+              name="protocoloTratamiento"
+              value={formData.protocoloTratamiento}
+              onChange={handleChange}
+              placeholder="Ej: FOLFOX, AC-T, CHOP..."
+              helperText="Nombre del protocolo de quimioterapia"
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Alergias Conocidas"
+              name="alergias"
+              value={formData.alergias}
+              onChange={handleChange}
+              multiline
+              rows={2}
+              placeholder="Ej: Penicilina, AINE..."
+              helperText="Alergias a medicamentos — importante para seguridad clínica"
+            />
+          </Grid>
+        </Grid>
 
         {/* ── Botones ── */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 1 }}>

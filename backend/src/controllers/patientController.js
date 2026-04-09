@@ -340,6 +340,53 @@ const patientController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  // PUT /api/patients/:id/visits/:visitId — editar fecha/tipo/notas de una visita programada
+  updateVisit: async (req, res, next) => {
+    try {
+      const { id, visitId } = req.params;
+      const { fechaVisita, fecha, tipoVisita, tipo, notas } = req.body;
+
+      const visit = await Visit.findOne({ where: { id: visitId, pacienteId: id } });
+      if (!visit) {
+        return res.status(404).json({ success: false, message: 'Visita no encontrada' });
+      }
+      if (visit.estado === 'cancelada') {
+        return res.status(400).json({ success: false, message: 'No se puede editar una visita cancelada' });
+      }
+
+      await visit.update({
+        fechaVisita: fechaVisita || fecha || visit.fechaVisita,
+        tipoVisita:  tipoVisita  || tipo  || visit.tipoVisita,
+        notas:       notas !== undefined ? notas : visit.notas
+      });
+
+      res.json({ success: true, message: 'Visita actualizada', data: visit });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // DELETE /api/patients/:id/visits/:visitId — cancelar visita (borrado lógico)
+  cancelVisit: async (req, res, next) => {
+    try {
+      const { id, visitId } = req.params;
+
+      const visit = await Visit.findOne({ where: { id: visitId, pacienteId: id } });
+      if (!visit) {
+        return res.status(404).json({ success: false, message: 'Visita no encontrada' });
+      }
+      if (visit.estado === 'cancelada') {
+        return res.status(400).json({ success: false, message: 'La visita ya está cancelada' });
+      }
+
+      await visit.update({ estado: 'cancelada' });
+
+      res.json({ success: true, message: 'Visita cancelada', data: visit });
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

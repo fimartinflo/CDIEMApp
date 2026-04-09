@@ -84,7 +84,24 @@ const Patient = sequelize.define('Patient', {
    *   'inactivo'        → soft-deleted; excluded from most queries
    * Transitions are managed by the chair assignment / release endpoints in app.js.
    */
-  estado: { type: DataTypes.STRING, defaultValue: 'activo' }
+  estado: { type: DataTypes.STRING, defaultValue: 'activo' },
+
+  /** Oncological diagnosis / cancer type. Optional. */
+  diagnostico: { type: DataTypes.STRING, allowNull: true },
+
+  /**
+   * Treatment protocol name.
+   * Examples: 'FOLFOX', 'AC-T', 'CHOP', 'Carboplatino-Taxol'.
+   * Optional — may not be defined at registration time.
+   */
+  protocoloTratamiento: { type: DataTypes.STRING, allowNull: true },
+
+  /**
+   * Known drug allergies (free-form text).
+   * Critical for medication safety during sessions.
+   * Optional but clinically important.
+   */
+  alergias: { type: DataTypes.TEXT, allowNull: true }
 });
 
 module.exports = Patient;

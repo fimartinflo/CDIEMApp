@@ -382,7 +382,7 @@ function buildEmailHTML(data, startDate, endDate) {
     <tr>
       <td style="padding:8px;border-bottom:1px solid #eee">${s.nombre}</td>
       <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${s.totalSesiones}</td>
-      <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${s.minutosTotales} min</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${Math.floor((s.segundosTotales || 0) / 60)} min</td>
     </tr>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>

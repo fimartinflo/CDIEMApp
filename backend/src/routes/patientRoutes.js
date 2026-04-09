@@ -21,5 +21,7 @@ router.post('/', patientController.createPatient);
 router.put('/:id', patientController.updatePatient);
 router.delete('/:id', patientController.deletePatient);
 router.post('/:id/schedule-visit', patientController.scheduleVisit);
+router.put('/:id/visits/:visitId', patientController.updateVisit);
+router.delete('/:id/visits/:visitId', patientController.cancelVisit);
 
 module.exports = router;

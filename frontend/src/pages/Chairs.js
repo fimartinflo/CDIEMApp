@@ -80,6 +80,9 @@ const Chairs = () => {
   // Diálogo de confirmación (reemplaza window.confirm)
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
 
+  // Diálogo de liberación con campo de notas clínicas
+  const [releaseDialog, setReleaseDialog] = useState({ open: false, chairId: null, notas: '' });
+
   useEffect(() => {
     loadChairs();
     loadPatients();
@@ -282,20 +285,19 @@ const Chairs = () => {
   // ==================== Liberar sillón ====================
 
   const handleRelease = (id) => {
-    setConfirmDialog({
-      open: true,
-      message: '¿Está seguro de liberar este sillón?',
-      onConfirm: async () => {
-        setConfirmDialog({ open: false, message: '', onConfirm: null });
-        try {
-          await chairService.releaseChair(id);
-          setSuccess('Sillón liberado exitosamente');
-          silentLoadChairs();
-        } catch (err) {
-          setError(err.response?.data?.message || 'Error al liberar sillón');
-        }
-      }
-    });
+    setReleaseDialog({ open: true, chairId: id, notas: '' });
+  };
+
+  const handleReleaseConfirm = async () => {
+    const { chairId, notas } = releaseDialog;
+    setReleaseDialog({ open: false, chairId: null, notas: '' });
+    try {
+      await chairService.releaseChair(chairId, notas);
+      setSuccess('Sillón liberado exitosamente');
+      silentLoadChairs();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al liberar sillón');
+    }
   };
 
   // ==================== Helpers visuales ====================
@@ -723,6 +725,42 @@ const Chairs = () => {
           <Button onClick={() => setOpenMedDialog(false)}>Cancelar</Button>
           <Button onClick={handleAddMed} variant="contained" disabled={!addMedId}>
             Administrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo de liberación de sillón con notas clínicas */}
+      <Dialog
+        open={releaseDialog.open}
+        onClose={() => setReleaseDialog({ open: false, chairId: null, notas: '' })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Liberar Sillón</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Confirma que desea finalizar la sesión y liberar el sillón?
+            </Typography>
+            <TextField
+              label="Observaciones clínicas (opcional)"
+              multiline
+              rows={3}
+              fullWidth
+              placeholder="Ej: Paciente toleró bien el tratamiento. Sin reacciones adversas."
+              value={releaseDialog.notas}
+              onChange={(e) => setReleaseDialog(prev => ({ ...prev, notas: e.target.value }))}
+              inputProps={{ maxLength: 500 }}
+              helperText={`${releaseDialog.notas.length}/500 caracteres`}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReleaseDialog({ open: false, chairId: null, notas: '' })}>
+            Cancelar
+          </Button>
+          <Button onClick={handleReleaseConfirm} color="error" variant="contained">
+            Liberar Sillón
           </Button>
         </DialogActions>
       </Dialog>

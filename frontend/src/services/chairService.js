@@ -51,9 +51,9 @@ const chairService = {
     return response.data;
   },
 
-  // Liberar sillón
-  releaseChair: async (id) => {
-    const response = await api.post(`/chairs/${id}/release`);
+  // Liberar sillón — acepta notas clínicas opcionales
+  releaseChair: async (id, notas = '') => {
+    const response = await api.post(`/chairs/${id}/release`, { notas });
     return response.data;
   }
 };

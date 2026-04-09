@@ -352,11 +352,17 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
     const duracionSegundos = Math.round((horaFin - new Date(session.horaInicio)) / 1000);
     const duracionMin = Math.floor(duracionSegundos / 60);
 
+    // Notas clínicas: usar las del body o auto-generadas si no vienen
+    const { notas } = req.body;
+    const notasFinales = notas?.trim()
+      ? `${notas.trim()} — Duración: ${duracionMin} min`
+      : `Atención completada. Duración: ${duracionMin} minutos`;
+
     // Cerrar sesión
     await session.update({
       horaFin,
       estado: 'finalizada',
-      notas: `Atención completada. Duración: ${duracionMin} minutos`
+      notas: notasFinales
     }, { transaction });
 
     // Liberar sillón y actualizar estado del paciente
