@@ -69,6 +69,7 @@ const chairRoutes   = require('./routes/chairRoutes');
 const reportRoutes  = require('./routes/reportRoutes');
 const auditRoutes   = require('./routes/auditRoutes');
 const logAudit      = require('./utils/audit');
+const { runBackup } = require('./utils/backup');
 
 // === Conectar BD ===
 // Se ejecuta una vez al iniciar el servidor. sequelize.sync() crea las tablas que
@@ -700,6 +701,10 @@ app.use(errorHandler);
 
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3001;
+
+// Backup automático de SQLite al arrancar (no bloquea el inicio)
+runBackup().catch(() => {});
+
 app.listen(PORT, () => {
   console.log(`
   🚀 Servidor CDIEM corriendo en puerto ${PORT}

@@ -77,6 +77,9 @@ const Chairs = () => {
   // Reloj en tiempo real para mostrar duración actualizada cada segundo
   const [now, setNow] = useState(new Date());
 
+  // Alerta de stock crítico (naranja)
+  const [stockAlert, setStockAlert] = useState('');
+
   // Diálogo de confirmación (reemplaza window.confirm)
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
 
@@ -269,7 +272,7 @@ const Chairs = () => {
       return;
     }
     try {
-      await api.post(`/chairs/${selectedChair.id}/medications`, {
+      const res = await api.post(`/chairs/${selectedChair.id}/medications`, {
         medicationId: parseInt(addMedId),
         cantidad: addMedQty
       });
@@ -277,6 +280,12 @@ const Chairs = () => {
       setOpenMedDialog(false);
       silentLoadChairs();
       loadInventory();
+      // Alerta de stock crítico si el backend lo indica
+      if (res.data?.data?.alertaStock) {
+        const nombre = res.data.data.medicamento;
+        const restante = res.data.data.stockRestante;
+        setStockAlert(`Stock crítico: ${nombre} — quedan ${restante} unidades`);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Error al administrar medicamento');
     }
@@ -781,6 +790,12 @@ const Chairs = () => {
       </Snackbar>
       <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
         <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>
+      </Snackbar>
+      <Snackbar open={!!stockAlert} autoHideDuration={8000} onClose={() => setStockAlert('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="warning" onClose={() => setStockAlert('')} sx={{ fontWeight: 'bold' }}>
+          ⚠️ {stockAlert}
+        </Alert>
       </Snackbar>
     </Container>
   );

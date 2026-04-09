@@ -41,6 +41,16 @@ import esLocale from 'date-fns/locale/es';
 import inventoryService from '../services/inventoryService';
 import authService from '../services/authService';
 
+const CATEGORIAS = [
+  { value: 'general',       label: 'General',       color: 'default' },
+  { value: 'quimioterapia', label: 'Quimioterapia', color: 'error'   },
+  { value: 'premedicacion', label: 'Premedicación', color: 'warning' },
+  { value: 'antiemeticos',  label: 'Antieméticos',  color: 'info'    },
+  { value: 'soporte',       label: 'Soporte',       color: 'success' },
+];
+const catLabel = (v) => CATEGORIAS.find(c => c.value === v)?.label || v;
+const catColor = (v) => CATEGORIAS.find(c => c.value === v)?.color || 'default';
+
 const Inventory = () => {
   const userRole = authService.getCurrentUser()?.role;
   const canWrite = userRole === 'admin' || userRole === 'administracion';
@@ -48,35 +58,26 @@ const Inventory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
-  // Diálogos
+  const [categoriaFilter, setCategoriaFilter] = useState('');
+
+  // Derivado — no duplicar el filter en JSX
+  const filteredItems = items.filter(
+    i => i.activo !== false && (!categoriaFilter || i.categoria === categoriaFilter)
+  );
+
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openQuantityDialog, setOpenQuantityDialog] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
-  
-  // Estados para formularios
+
   const [newItem, setNewItem] = useState({
-    nombre: '',
-    descripcion: '',
-    cantidad: 0,
-    unidad: 'unidad',
-    precio: 0,
-    fechaExpiracion: null,
-    proveedor: '',
-    minimoStock: 10
+    nombre: '', descripcion: '', cantidad: 0, unidad: 'unidad',
+    precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10, categoria: 'general'
   });
 
   const [editItem, setEditItem] = useState({
-    id: '',
-    nombre: '',
-    descripcion: '',
-    cantidad: 0,
-    unidad: 'unidad',
-    precio: 0,
-    fechaExpiracion: null,
-    proveedor: '',
-    minimoStock: 10
+    id: '', nombre: '', descripcion: '', cantidad: 0, unidad: 'unidad',
+    precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10, categoria: 'general'
   });
   
   const [quantityData, setQuantityData] = useState({
@@ -113,14 +114,8 @@ const Inventory = () => {
       setSuccess('Medicamento creado exitosamente');
       setOpenDialog(false);
       setNewItem({
-        nombre: '',
-        descripcion: '',
-        cantidad: 0,
-        unidad: 'unidad',
-        precio: 0,
-        fechaExpiracion: null,
-        proveedor: '',
-        minimoStock: 10
+        nombre: '', descripcion: '', cantidad: 0, unidad: 'unidad',
+        precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10, categoria: 'general'
       });
       loadItems();
     } catch (err) {
@@ -220,16 +215,27 @@ const Inventory = () => {
 
         {/* Barra de herramientas */}
         <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
-              Total de medicamentos: {items.length}
-            </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="h6">
+                Total: {filteredItems.length} medicamentos
+              </Typography>
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Filtrar por categoría</InputLabel>
+                <Select
+                  value={categoriaFilter}
+                  label="Filtrar por categoría"
+                  onChange={(e) => setCategoriaFilter(e.target.value)}
+                >
+                  <MenuItem value="">Todas las categorías</MenuItem>
+                  {CATEGORIAS.map(c => (
+                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
             {canWrite && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpenDialog(true)}
-              >
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
                 Nuevo Medicamento
               </Button>
             )}
@@ -247,6 +253,7 @@ const Inventory = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Nombre</TableCell>
+                  <TableCell>Categoría</TableCell>
                   <TableCell>Descripción</TableCell>
                   <TableCell align="right">Cantidad</TableCell>
                   <TableCell>Unidad</TableCell>
@@ -258,9 +265,7 @@ const Inventory = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {items
-                  .filter(item => item.activo !== false)
-                  .map((item) => {
+                {filteredItems.map((item) => {
                     const expiringSoon = isExpiringSoon(item.fechaExpiracion);
                     const expired = isExpired(item.fechaExpiracion);
                     const lowStock = isLowStock(item.cantidad, item.minimoStock);
@@ -268,6 +273,14 @@ const Inventory = () => {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>{item.nombre}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={catLabel(item.categoria || 'general')}
+                            color={catColor(item.categoria || 'general')}
+                            size="small"
+                            variant="outlined"
+                          />
+                        </TableCell>
                         <TableCell>{item.descripcion}</TableCell>
                         <TableCell align="right">
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -350,7 +363,8 @@ const Inventory = () => {
                                     precio: item.precio || 0,
                                     fechaExpiracion: item.fechaExpiracion ? new Date(item.fechaExpiracion) : null,
                                     proveedor: item.proveedor,
-                                    minimoStock: item.minimoStock
+                                    minimoStock: item.minimoStock,
+                                    categoria: item.categoria || 'general'
                                   });
                                   setOpenEditDialog(true);
                                 }}
@@ -456,6 +470,19 @@ const Inventory = () => {
                 required
                 helperText="Alerta cuando la cantidad sea igual o inferior a este valor"
               />
+
+              <FormControl fullWidth>
+                <InputLabel>Categoría</InputLabel>
+                <Select
+                  value={newItem.categoria}
+                  label="Categoría"
+                  onChange={(e) => setNewItem({...newItem, categoria: e.target.value})}
+                >
+                  {CATEGORIAS.map(c => (
+                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
           </DialogContent>
           <DialogActions>
@@ -542,6 +569,19 @@ const Inventory = () => {
                 fullWidth
                 required
               />
+
+              <FormControl fullWidth>
+                <InputLabel>Categoría</InputLabel>
+                <Select
+                  value={editItem.categoria}
+                  label="Categoría"
+                  onChange={(e) => setEditItem({...editItem, categoria: e.target.value})}
+                >
+                  {CATEGORIAS.map(c => (
+                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
           </DialogContent>
           <DialogActions>
