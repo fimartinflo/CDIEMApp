@@ -92,7 +92,9 @@ CDIEMApp/
 │   │   │   ├── roles.js         # Control de acceso por rol
 │   │   │   └── errorHandler.js  # Manejo centralizado de errores
 │   │   └── utils/
-│   │       └── response.js      # success(res, message, data, status) / error(res, message, code, status)
+│   │       ├── response.js      # success(res, message, data, status) / error(res, message, code, status)
+│   │       ├── audit.js         # logAudit() — registro no-bloqueante de auditoría
+│   │       └── backup.js        # runBackup() — backup automático de SQLite al iniciar
 │   ├── init-db.js               # Inicialización idempotente + seed (usa migraciones)
 │   ├── test-api.js              # Suite de 93 tests de integración
 │   └── package.json
@@ -102,7 +104,7 @@ CDIEMApp/
     │   ├── App.js               # Componente raíz con rutas
     │   ├── index.js             # Entry point React
     │   ├── components/
-    │   │   ├── Layout.js        # Wrapper principal de layout
+    │   │   ├── Layout.js        # Wrapper + búsqueda global (pacientes + medicamentos)
     │   │   ├── PatientForm.js   # Formulario de pacientes (campo estado en modo edición)
     │   │   ├── PatientSearch.js # Búsqueda de pacientes
     │   │   └── PrivateRoute.js  # Protección de rutas
@@ -272,6 +274,7 @@ El mismo modelo `Medication` se usa en `SessionMedication` para el flujo de sill
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/dashboard` | Métricas: pacientes, sillones, sesiones activas, medicamentos críticos |
+| GET | `/api/search?q=` | Búsqueda global: pacientes + medicamentos (min 2 chars, max 5 por tipo) |
 | GET | `/health` | Health check |
 | GET | `/` | Info del servidor |
 
@@ -320,16 +323,16 @@ npm run build    # Build de producción
   - En error 401 (no login): limpia localStorage, setea `sessionStorage.session_expired='1'`, redirige a `/login`
   - Login.js lee el flag en `useEffect` → muestra Snackbar "Tu sesión ha expirado"
 - **`patientService.js`** — CRUD + `validateRUT()` + `formatRUT()` locales
-- **`chairService.js`** — CRUD + `assignPatient(id, patientId, medicamentos)` + `releaseChair(id)`
+- **`chairService.js`** — CRUD + `assignPatient(id, patientId, medicamentos)` + `releaseChair(id, notas)`
 - **`inventoryService.js`** — CRUD completo + `updateQuantity(id, cantidad, tipo, motivo)`
 
 ### Páginas
 - **`Dashboard.js`** — Consume `GET /api/dashboard`, filtra tarjetas de acceso rápido según rol del usuario
 - **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, historial clínico con duración en HH:MM:SS; botón "Exportar CSV" → `GET /api/patients/export`
 - **`Users.js`** — Solo admin: tabla con crear/editar/toggle-active/reset-password usando Dialogs MUI
-- **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos
-- **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"; botones de escritura visibles solo para `admin` y `administracion`
-- **`Reports.js`** — Selección de período, tabla expandible por paciente, exportación Excel (CSV con BOM para Excel español), diálogo de informe individual con impresión funcional
+- **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos, notas clínicas al liberar, resumen de sesión imprimible post-liberación
+- **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"; columna "Último uso" (fecha de última administración); filtro por categoría; botones de escritura visibles solo para `admin` y `administracion`
+- **`Reports.js`** — Selección de período, tabla expandible por paciente, exportación Excel (CSV con BOM para Excel español), diálogo de informe individual con impresión funcional, envío por email
 
 ### Componentes
 - **`PatientForm.js`** — Formulario reutilizable (crear/editar)
@@ -337,6 +340,7 @@ npm run build    # Build de producción
   - En modo edición: selector de estado deshabilitado cuando `estado === 'en_tratamiento'` (el estado lo gestiona el flujo clínico)
   - Validación RUT en tiempo real con feedback visual
 - **`PrivateRoute.js`** — Protege rutas que requieren autenticación
+- **`Layout.js`** — Barra de búsqueda global en AppBar (debounced 400ms): busca pacientes por nombre/RUT/pasaporte y medicamentos por nombre vía `GET /api/search`. Resultados en Popper con agrupación y navegación a la página correspondiente
 
 ### Tema MUI
 - Colores healthcare/oncología: azul `#1976d2`, verde `#2e7d32`, naranja `#ed6c02`
@@ -387,6 +391,19 @@ npm run build    # Build de producción
 - ✅ **B2 — Log de auditoría**: modelo `AuditLog` + migration 008 (con índices), `utils/audit.js` helper no-bloqueante; hooks en controllers (patient, inventory) y inline en app.js (assign/release); `GET /api/audit` (admin only) con filtros y paginación; Dashboard muestra tarjeta y métrica de usuarios (admin)
 - ✅ **C3 — Playwright E2E**: setup en `e2e/` con `playwright.config.js` + 3 archivos de test: `login.spec.js`, `dashboard.spec.js`, `chairs.spec.js`
 - ✅ **Comentarios**: todos los archivos del proyecto comentados con JSDoc/inline (controllers, models, middleware, routes, utils, services, components, migrations)
+- ✅ **G1 — Fix bug email reportes**: `s.minutosTotales` → `Math.floor((s.segundosTotales || 0) / 60)` en `reportController.js`
+- ✅ **G2 — Notas clínicas al liberar sillón**: campo de observaciones en Dialog de liberación; `POST /:id/release` acepta `{ notas }` en body
+- ✅ **G3 — Campos clínicos en paciente**: migración 009 agrega `diagnostico`, `protocoloTratamiento`, `alergias`; sección "Información Clínica" en PatientForm.js
+- ✅ **G4 — Botón "Enviar por Email"**: Dialog con campo email en Reports.js; llama a `POST /api/reports/email` (backend ya implementado con nodemailer)
+- ✅ **G5 — Gestión de visitas**: `PUT /api/patients/:id/visits/:visitId` y `DELETE` para editar/cancelar visitas; botones en modal de Patients.js
+- ✅ **G6 — Backup automático**: `utils/backup.js` copia `database.sqlite` a `backups/` al iniciar; rotación a 7 copias; `backup.bat` para Windows
+- ✅ **G7 — Alertas stock en Chairs**: Snackbar naranja cuando `alertaStock: true` tras administrar medicamento
+- ✅ **G8 — Categoría de medicamentos**: migración 010, campo `categoria` en Medication; filtro dropdown y chip en Inventory.js
+- ✅ **G10 — Historial de visitas paginado**: paginación client-side (5 por página) en modal de visitas de Patients.js
+- ✅ **G11 — Vista calendario de visitas**: `DateCalendar` de MUI x-date-pickers con badges en días con visitas; tabs Lista/Calendario en modal
+- ✅ **G13 — Indicador "Último uso" en Inventario**: subconsulta `MAX(SessionMedications.createdAt)` en `getAllItems`; columna "Último Uso" en tabla de Inventory.js
+- ✅ **E4 — Resumen de sesión imprimible**: al liberar sillón, Dialog con paciente/duración/medicamentos/precios + botón Imprimir (CSS print oculta el resto)
+- ✅ **F2 — Búsqueda global**: `GET /api/search?q=` (pacientes + medicamentos); barra de búsqueda debounced en AppBar de Layout.js con Popper de resultados agrupados
 
 ### Variables de Entorno (producción)
 
@@ -408,7 +425,7 @@ REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
 - ✅ **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
-- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 8 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
+- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 10 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
 - ✅ **Supabase (PostgreSQL cloud):** `DB_DIALECT=postgres` + `DATABASE_URL`; pool conservador; SSL sin verificación de cert; `scripts/sqlite-to-postgres.js` para migrar datos; `backend/.env.supabase` como plantilla
 - ✅ **pg + pg-hstore** instalados en backend (dependencias PostgreSQL)
 
@@ -507,30 +524,14 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 ## Próximas Mejoras Sugeridas
 
 > Esta sección se actualiza al final de cada sesión de trabajo.
+> Todas las mejoras de prioridad alta y media han sido implementadas.
 
-### 🔴 Alta prioridad
+### 🟢 Pendientes (baja prioridad / técnico)
 
-| # | Mejora | Descripción |
-|---|--------|-------------|
-| A1 | **Página de gestión de usuarios** | El backend tiene endpoints CRUD de usuarios (`/api/auth/register`, etc.) pero no hay UI. El rol `admin` debería poder crear, editar y desactivar usuarios desde el frontend. |
-| A2 | **Rate limiting en login** | `POST /api/auth/login` no tiene límite de intentos — vulnerable a fuerza bruta. Implementar con `express-rate-limit` (ej. 10 intentos / 15 min por IP). |
-| A3 | **Mensaje claro al expirar sesión** | Cuando el JWT caduca (8h), el usuario es redirigido a `/login` sin explicación. Mostrar un Snackbar "Sesión expirada, inicia sesión nuevamente" antes de redirigir. |
+| # | Mejora | Descripción | Esfuerzo |
+|---|--------|-------------|----------|
+| G9 | **Dashboard con gráficos** | `recharts`: sesiones por día + top medicamentos. Nuevo endpoint `GET /api/dashboard/charts`. | Medio |
+| G12 | **Exportación PDF nativa** | `jsPDF` + `html2canvas` — reemplaza `window.print()` en Reports.js. | Alto |
+| F3 | **2FA/TOTP para admin** | Google Authenticator — nueva columna en Users + UI de configuración. | Alto |
 
-### 🟡 Media prioridad
-
-| # | Mejora | Descripción |
-|---|--------|-------------|
-| B1 | **Exportación de pacientes a CSV/Excel** | Botón en la página de Pacientes para exportar la lista filtrada. Reutiliza el patrón de `downloadBlob` de Reports.js. |
-| B2 | **Log de auditoría** | Registrar en BD quién hizo qué y cuándo: cambios de stock, asignaciones de sillón, modificaciones de paciente. Útil para trazabilidad clínica. |
-| B3 | **Health check mejorado** | `GET /health` actualmente devuelve solo `{ status: 'ok' }`. Agregar estado de la BD, uptime, versión del servidor y dialecto en uso. |
-| B4 | **README.md actualizado** | El README está desactualizado. Actualizarlo con el stack actual, instrucciones de instalación, comandos de migración y modos de BD. |
-
-### 🟢 Baja prioridad / técnico
-
-| # | Mejora | Descripción |
-|---|--------|-------------|
-| C1 | **Compresión gzip en Express** | Agregar `compression` middleware para reducir el tamaño de las respuestas JSON en producción. |
-| C2 | **Paginación en historial de sillón** | `GET /chairs/:id/history` devuelve todas las sesiones sin límite. Agregar `page` y `limit` como en pacientes. |
-| C3 | **Tests E2E con Playwright** | Los tests actuales son unitarios (RTL) e integración (test-api.js). Playwright permitiría tests del flujo completo frontend+backend en un navegador real. |
-
-*Última actualización: 2026-04-06 — B2 audit log, C3 Playwright E2E, Dashboard tarjeta usuarios, comentarios completos en todo el proyecto*
+*Última actualización: 2026-04-10 — G13 último uso inventario, E4 resumen sesión imprimible, F2 búsqueda global*

@@ -40,7 +40,8 @@ import {
   CheckCircle as AvailableIcon,
   Block as OccupiedIcon,
   Build as MaintenanceIcon,
-  MedicalServices as MedIcon
+  MedicalServices as MedIcon,
+  Print as PrintIcon
 } from '@mui/icons-material';
 import chairService from '../services/chairService';
 import patientService from '../services/patientService';
@@ -85,6 +86,9 @@ const Chairs = () => {
 
   // Diálogo de liberación con campo de notas clínicas
   const [releaseDialog, setReleaseDialog] = useState({ open: false, chairId: null, notas: '' });
+
+  // Diálogo de resumen de sesión imprimible (post-liberación)
+  const [summaryDialog, setSummaryDialog] = useState({ open: false, data: null });
 
   useEffect(() => {
     loadChairs();
@@ -301,12 +305,22 @@ const Chairs = () => {
     const { chairId, notas } = releaseDialog;
     setReleaseDialog({ open: false, chairId: null, notas: '' });
     try {
-      await chairService.releaseChair(chairId, notas);
+      const result = await chairService.releaseChair(chairId, notas);
       setSuccess('Sillón liberado exitosamente');
       silentLoadChairs();
+      // Mostrar resumen de sesión imprimible
+      if (result.data) {
+        setSummaryDialog({ open: true, data: result.data });
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Error al liberar sillón');
     }
+  };
+
+  const formatDurationHM = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}min`;
   };
 
   // ==================== Helpers visuales ====================
@@ -773,6 +787,87 @@ const Chairs = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Diálogo de resumen de sesión (imprimible) */}
+      <Dialog
+        open={summaryDialog.open}
+        onClose={() => setSummaryDialog({ open: false, data: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Resumen de Sesión</DialogTitle>
+        <DialogContent>
+          {summaryDialog.data && (
+            <Box id="session-summary-print" sx={{ pt: 1 }}>
+              <Typography variant="h6" gutterBottom>Centro CDIEM — Resumen de Atención</Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="body1"><strong>Paciente:</strong> {summaryDialog.data.paciente || 'No registrado'}</Typography>
+              <Typography variant="body2">
+                <strong>Inicio:</strong> {new Date(summaryDialog.data.horaInicio).toLocaleString('es-CL')}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Fin:</strong> {new Date(summaryDialog.data.horaFin).toLocaleString('es-CL')}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                <strong>Duración:</strong> {formatDurationHM(summaryDialog.data.duracionSegundos || 0)}
+              </Typography>
+
+              {summaryDialog.data.notas && (
+                <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic' }}>
+                  <strong>Observaciones:</strong> {summaryDialog.data.notas}
+                </Typography>
+              )}
+
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Medicamentos Administrados</Typography>
+              {(!summaryDialog.data.medicamentos || summaryDialog.data.medicamentos.length === 0) ? (
+                <Typography variant="body2" color="text.secondary">Ninguno</Typography>
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Medicamento</TableCell>
+                      <TableCell align="center">Cantidad</TableCell>
+                      <TableCell align="right">Precio Unit.</TableCell>
+                      <TableCell>Hora</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {summaryDialog.data.medicamentos.map((med, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{med.nombre}</TableCell>
+                        <TableCell align="center">{med.cantidad} {med.unidad}</TableCell>
+                        <TableCell align="right">${(med.precioUnitario || 0).toLocaleString('es-CL')}</TableCell>
+                        <TableCell>{new Date(med.hora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ '@media print': { display: 'none' } }}>
+          <Button onClick={() => setSummaryDialog({ open: false, data: null })}>Cerrar</Button>
+          <Button
+            variant="contained"
+            startIcon={<PrintIcon />}
+            onClick={() => window.print()}
+          >
+            Imprimir
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CSS para impresión: solo se inyecta cuando el resumen está abierto */}
+      {summaryDialog.open && (
+        <style>{`
+          @media print {
+            body > *:not(.MuiDialog-root) { display: none !important; }
+            .MuiDialog-root .MuiBackdrop-root { display: none !important; }
+            .MuiDialog-root .MuiPaper-root { box-shadow: none !important; }
+          }
+        `}</style>
+      )}
 
       {/* Diálogo de confirmación */}
       <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}>

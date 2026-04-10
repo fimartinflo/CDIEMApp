@@ -260,6 +260,7 @@ const Inventory = () => {
                   <TableCell align="right">Precio (CLP)</TableCell>
                   <TableCell>Fecha Expiración</TableCell>
                   <TableCell>Proveedor</TableCell>
+                  <TableCell>Último Uso</TableCell>
                   <TableCell>Estado</TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
@@ -315,6 +316,12 @@ const Inventory = () => {
                           )}
                         </TableCell>
                         <TableCell>{item.proveedor || 'N/A'}</TableCell>
+                        <TableCell>
+                          {item.ultimoUso
+                            ? new Date(item.ultimoUso).toLocaleDateString('es-CL')
+                            : <Typography variant="caption" color="text.secondary">Sin uso</Typography>
+                          }
+                        </TableCell>
                         <TableCell>
                           {lowStock && (
                             <Chip

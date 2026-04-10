@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -16,6 +16,12 @@ import {
   Menu,
   MenuItem,
   Chip,
+  TextField,
+  InputAdornment,
+  Paper,
+  Popper,
+  ClickAwayListener,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -27,8 +33,12 @@ import {
   Logout,
   ManageAccounts,
   History,
+  Search as SearchIcon,
+  Person as PersonIcon,
+  MedicalServices as MedIcon,
 } from '@mui/icons-material';
 import authService from '../services/authService';
+import api from '../services/api';
 
 const drawerWidth = 240;
 
@@ -62,6 +72,46 @@ const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const user = authService.getCurrentUser();
+
+  // === Búsqueda global ===
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  const doSearch = useCallback(async (q) => {
+    if (!q || q.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const res = await api.get('/search', { params: { q: q.trim() } });
+      setSearchResults(res.data?.data || null);
+    } catch {
+      setSearchResults(null);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (searchQuery.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    debounceRef.current = setTimeout(() => doSearch(searchQuery), 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery, doSearch]);
+
+  const handleSearchSelect = (type) => {
+    setSearchQuery('');
+    setSearchResults(null);
+    if (type === 'paciente') navigate('/patients');
+    else if (type === 'medicamento') navigate('/inventory');
+  };
 
   // Filtrar menú según rol del usuario
   const menuItems = allMenuItems.filter(item => item.roles.includes(user?.role));
@@ -119,6 +169,89 @@ const Layout = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Sistema de Gestión — CDIEM
           </Typography>
+
+          {/* Búsqueda global */}
+          <Box ref={searchRef} sx={{ position: 'relative', mr: 2, display: { xs: 'none', md: 'block' } }}>
+            <TextField
+              size="small"
+              placeholder="Buscar pacientes o medicamentos…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{
+                width: 280,
+                bgcolor: 'rgba(255,255,255,0.15)',
+                borderRadius: 1,
+                '& .MuiInputBase-input': { color: '#fff' },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.5)' },
+                '& .MuiInputAdornment-root': { color: 'rgba(255,255,255,0.7)' },
+              }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      {searchLoading ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
+                    </InputAdornment>
+                  ),
+                }
+              }}
+            />
+            <Popper
+              open={!!searchResults}
+              anchorEl={searchRef.current}
+              placement="bottom-start"
+              sx={{ zIndex: 1300, width: 320 }}
+            >
+              <ClickAwayListener onClickAway={() => setSearchResults(null)}>
+                <Paper sx={{ mt: 0.5, maxHeight: 350, overflow: 'auto' }}>
+                  {searchResults?.pacientes?.length > 0 && (
+                    <>
+                      <Typography variant="caption" sx={{ px: 2, pt: 1, display: 'block', color: 'text.secondary', fontWeight: 'bold' }}>
+                        Pacientes
+                      </Typography>
+                      {searchResults.pacientes.map(p => (
+                        <MenuItem key={`p-${p.id}`} onClick={() => handleSearchSelect('paciente')}
+                          sx={{ display: 'flex', gap: 1 }}>
+                          <PersonIcon fontSize="small" color="primary" />
+                          <Box>
+                            <Typography variant="body2">{p.nombreCompleto}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {p.tipoIdentificacion === 'rut' ? p.rut : p.pasaporte} · {p.estado}
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </>
+                  )}
+                  {searchResults?.medicamentos?.length > 0 && (
+                    <>
+                      <Typography variant="caption" sx={{ px: 2, pt: 1, display: 'block', color: 'text.secondary', fontWeight: 'bold' }}>
+                        Medicamentos
+                      </Typography>
+                      {searchResults.medicamentos.map(m => (
+                        <MenuItem key={`m-${m.id}`} onClick={() => handleSearchSelect('medicamento')}
+                          sx={{ display: 'flex', gap: 1 }}>
+                          <MedIcon fontSize="small" color="secondary" />
+                          <Box>
+                            <Typography variant="body2">{m.nombre}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Stock: {m.cantidad} {m.unidad} · {m.categoria}
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </>
+                  )}
+                  {searchResults?.pacientes?.length === 0 && searchResults?.medicamentos?.length === 0 && (
+                    <Typography variant="body2" sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                      Sin resultados para "{searchQuery}"
+                    </Typography>
+                  )}
+                </Paper>
+              </ClickAwayListener>
+            </Popper>
+          </Box>
+
           <div>
             <IconButton
               size="large"
