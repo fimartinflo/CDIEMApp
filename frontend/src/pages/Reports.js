@@ -7,7 +7,7 @@ import {
   Tooltip, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import {
-  ExpandMore, ExpandLess, Print, Download,
+  ExpandMore, ExpandLess, Print, Download, Email,
   PeopleAlt, EventNote, AttachMoney, MedicalServices,
   Chair as ChairIcon, CalendarToday, TableChart
 } from '@mui/icons-material';
@@ -228,6 +228,9 @@ const Reports = () => {
   const [patientReportData, setPatientReportData] = useState(null);
   const [patientLoading, setPatientLoading] = useState(false);
 
+  // Email dialog
+  const [emailDialog, setEmailDialog] = useState({ open: false, recipient: '', sending: false, sent: false, error: '' });
+
   // COP Excel — inicializado al mes/año actual al montar el componente
   const [copMes, setCopMes] = useState(() => new Date().getMonth() + 1);
   const [copAño, setCopAño] = useState(() => new Date().getFullYear());
@@ -335,6 +338,21 @@ const Reports = () => {
       setCopError(err.response?.data?.message || err.message || 'Error generando el archivo COP');
     } finally {
       setCopLoading(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailDialog.recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDialog.recipient)) {
+      setEmailDialog(prev => ({ ...prev, error: 'Ingrese un correo válido' }));
+      return;
+    }
+    setEmailDialog(prev => ({ ...prev, sending: true, error: '' }));
+    try {
+      await reportService.sendEmail(emailDialog.recipient, startDate, endDate, reportData);
+      setEmailDialog(prev => ({ ...prev, sending: false, sent: true }));
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Error al enviar el email';
+      setEmailDialog(prev => ({ ...prev, sending: false, error: msg }));
     }
   };
 
@@ -479,6 +497,13 @@ const Reports = () => {
             <Button variant="outlined" startIcon={<Download />} onClick={exportCSV}>
               Exportar Excel
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Email />}
+              onClick={() => setEmailDialog({ open: true, recipient: '', sending: false, sent: false, error: '' })}
+            >
+              Enviar por Email
+            </Button>
           </Box>
 
           {/* Tarjetas de resumen */}
@@ -620,6 +645,60 @@ const Reports = () => {
           </Paper>
         </Box>
       )}
+
+      {/* Diálogo: Enviar reporte por email */}
+      <Dialog
+        open={emailDialog.open}
+        onClose={() => !emailDialog.sending && setEmailDialog(prev => ({ ...prev, open: false }))}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Enviar Reporte por Email</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {emailDialog.sent ? (
+              <Alert severity="success">
+                Reporte enviado correctamente a <strong>{emailDialog.recipient}</strong>
+              </Alert>
+            ) : (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  Se enviará el reporte del período <strong>{fmtDateShort(startDate)} — {fmtDateShort(endDate)}</strong> al correo indicado.
+                </Typography>
+                <TextField
+                  label="Correo destinatario *"
+                  type="email"
+                  fullWidth
+                  value={emailDialog.recipient}
+                  onChange={(e) => setEmailDialog(prev => ({ ...prev, recipient: e.target.value, error: '' }))}
+                  error={!!emailDialog.error}
+                  helperText={emailDialog.error}
+                  disabled={emailDialog.sending}
+                  placeholder="destinatario@clinica.cl"
+                />
+              </>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setEmailDialog(prev => ({ ...prev, open: false }))}
+            disabled={emailDialog.sending}
+          >
+            {emailDialog.sent ? 'Cerrar' : 'Cancelar'}
+          </Button>
+          {!emailDialog.sent && (
+            <Button
+              onClick={handleSendEmail}
+              variant="contained"
+              startIcon={emailDialog.sending ? <CircularProgress size={18} color="inherit" /> : <Email />}
+              disabled={emailDialog.sending}
+            >
+              {emailDialog.sending ? 'Enviando...' : 'Enviar'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       {/* Diálogo: Informe del paciente */}
       {patientDialogOpen && (

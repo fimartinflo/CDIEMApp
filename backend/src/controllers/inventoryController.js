@@ -16,6 +16,7 @@
  *  - Escritura (crear/editar/eliminar/stock): admin + administracion
  */
 const { Op }    = require('sequelize');
+const sequelize = require('../config/database');
 // Usa el modelo Medication que es el que integra con el flujo de sillones/sesiones
 const Inventory = require('../models/Medication');
 const logAudit  = require('../utils/audit');
@@ -51,13 +52,21 @@ const inventoryController = {
       }
       
       const items = await Inventory.findAll({
+        attributes: {
+          include: [
+            // Subconsulta: fecha de la última administración de cada medicamento
+            [sequelize.literal(
+              '(SELECT MAX("SessionMedications"."createdAt") FROM "SessionMedications" WHERE "SessionMedications"."medicationId" = "Medication"."id")'
+            ), 'ultimoUso']
+          ]
+        },
         where,
         order: [
           ['fechaExpiracion', 'ASC NULLS LAST'],
           ['nombre', 'ASC']
         ]
       });
-      
+
       res.json({
         success: true,
         data: items

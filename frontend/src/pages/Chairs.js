@@ -40,7 +40,8 @@ import {
   CheckCircle as AvailableIcon,
   Block as OccupiedIcon,
   Build as MaintenanceIcon,
-  MedicalServices as MedIcon
+  MedicalServices as MedIcon,
+  Print as PrintIcon
 } from '@mui/icons-material';
 import chairService from '../services/chairService';
 import patientService from '../services/patientService';
@@ -77,8 +78,17 @@ const Chairs = () => {
   // Reloj en tiempo real para mostrar duración actualizada cada segundo
   const [now, setNow] = useState(new Date());
 
+  // Alerta de stock crítico (naranja)
+  const [stockAlert, setStockAlert] = useState('');
+
   // Diálogo de confirmación (reemplaza window.confirm)
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
+
+  // Diálogo de liberación con campo de notas clínicas
+  const [releaseDialog, setReleaseDialog] = useState({ open: false, chairId: null, notas: '' });
+
+  // Diálogo de resumen de sesión imprimible (post-liberación)
+  const [summaryDialog, setSummaryDialog] = useState({ open: false, data: null });
 
   useEffect(() => {
     loadChairs();
@@ -266,7 +276,7 @@ const Chairs = () => {
       return;
     }
     try {
-      await api.post(`/chairs/${selectedChair.id}/medications`, {
+      const res = await api.post(`/chairs/${selectedChair.id}/medications`, {
         medicationId: parseInt(addMedId),
         cantidad: addMedQty
       });
@@ -274,6 +284,12 @@ const Chairs = () => {
       setOpenMedDialog(false);
       silentLoadChairs();
       loadInventory();
+      // Alerta de stock crítico si el backend lo indica
+      if (res.data?.data?.alertaStock) {
+        const nombre = res.data.data.medicamento;
+        const restante = res.data.data.stockRestante;
+        setStockAlert(`Stock crítico: ${nombre} — quedan ${restante} unidades`);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Error al administrar medicamento');
     }
@@ -282,20 +298,29 @@ const Chairs = () => {
   // ==================== Liberar sillón ====================
 
   const handleRelease = (id) => {
-    setConfirmDialog({
-      open: true,
-      message: '¿Está seguro de liberar este sillón?',
-      onConfirm: async () => {
-        setConfirmDialog({ open: false, message: '', onConfirm: null });
-        try {
-          await chairService.releaseChair(id);
-          setSuccess('Sillón liberado exitosamente');
-          silentLoadChairs();
-        } catch (err) {
-          setError(err.response?.data?.message || 'Error al liberar sillón');
-        }
+    setReleaseDialog({ open: true, chairId: id, notas: '' });
+  };
+
+  const handleReleaseConfirm = async () => {
+    const { chairId, notas } = releaseDialog;
+    setReleaseDialog({ open: false, chairId: null, notas: '' });
+    try {
+      const result = await chairService.releaseChair(chairId, notas);
+      setSuccess('Sillón liberado exitosamente');
+      silentLoadChairs();
+      // Mostrar resumen de sesión imprimible
+      if (result.data) {
+        setSummaryDialog({ open: true, data: result.data });
       }
-    });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al liberar sillón');
+    }
+  };
+
+  const formatDurationHM = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}min`;
   };
 
   // ==================== Helpers visuales ====================
@@ -727,6 +752,123 @@ const Chairs = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Diálogo de liberación de sillón con notas clínicas */}
+      <Dialog
+        open={releaseDialog.open}
+        onClose={() => setReleaseDialog({ open: false, chairId: null, notas: '' })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Liberar Sillón</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Confirma que desea finalizar la sesión y liberar el sillón?
+            </Typography>
+            <TextField
+              label="Observaciones clínicas (opcional)"
+              multiline
+              rows={3}
+              fullWidth
+              placeholder="Ej: Paciente toleró bien el tratamiento. Sin reacciones adversas."
+              value={releaseDialog.notas}
+              onChange={(e) => setReleaseDialog(prev => ({ ...prev, notas: e.target.value }))}
+              inputProps={{ maxLength: 500 }}
+              helperText={`${releaseDialog.notas.length}/500 caracteres`}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReleaseDialog({ open: false, chairId: null, notas: '' })}>
+            Cancelar
+          </Button>
+          <Button onClick={handleReleaseConfirm} color="error" variant="contained">
+            Liberar Sillón
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo de resumen de sesión (imprimible) */}
+      <Dialog
+        open={summaryDialog.open}
+        onClose={() => setSummaryDialog({ open: false, data: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Resumen de Sesión</DialogTitle>
+        <DialogContent>
+          {summaryDialog.data && (
+            <Box id="session-summary-print" sx={{ pt: 1 }}>
+              <Typography variant="h6" gutterBottom>Centro CDIEM — Resumen de Atención</Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="body1"><strong>Paciente:</strong> {summaryDialog.data.paciente || 'No registrado'}</Typography>
+              <Typography variant="body2">
+                <strong>Inicio:</strong> {new Date(summaryDialog.data.horaInicio).toLocaleString('es-CL')}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Fin:</strong> {new Date(summaryDialog.data.horaFin).toLocaleString('es-CL')}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                <strong>Duración:</strong> {formatDurationHM(summaryDialog.data.duracionSegundos || 0)}
+              </Typography>
+
+              {summaryDialog.data.notas && (
+                <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic' }}>
+                  <strong>Observaciones:</strong> {summaryDialog.data.notas}
+                </Typography>
+              )}
+
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Medicamentos Administrados</Typography>
+              {(!summaryDialog.data.medicamentos || summaryDialog.data.medicamentos.length === 0) ? (
+                <Typography variant="body2" color="text.secondary">Ninguno</Typography>
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Medicamento</TableCell>
+                      <TableCell align="center">Cantidad</TableCell>
+                      <TableCell align="right">Precio Unit.</TableCell>
+                      <TableCell>Hora</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {summaryDialog.data.medicamentos.map((med, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{med.nombre}</TableCell>
+                        <TableCell align="center">{med.cantidad} {med.unidad}</TableCell>
+                        <TableCell align="right">${(med.precioUnitario || 0).toLocaleString('es-CL')}</TableCell>
+                        <TableCell>{new Date(med.hora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ '@media print': { display: 'none' } }}>
+          <Button onClick={() => setSummaryDialog({ open: false, data: null })}>Cerrar</Button>
+          <Button
+            variant="contained"
+            startIcon={<PrintIcon />}
+            onClick={() => window.print()}
+          >
+            Imprimir
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CSS para impresión: solo se inyecta cuando el resumen está abierto */}
+      {summaryDialog.open && (
+        <style>{`
+          @media print {
+            body > *:not(.MuiDialog-root) { display: none !important; }
+            .MuiDialog-root .MuiBackdrop-root { display: none !important; }
+            .MuiDialog-root .MuiPaper-root { box-shadow: none !important; }
+          }
+        `}</style>
+      )}
+
       {/* Diálogo de confirmación */}
       <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}>
         <DialogTitle>Confirmar acción</DialogTitle>
@@ -743,6 +885,12 @@ const Chairs = () => {
       </Snackbar>
       <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
         <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>
+      </Snackbar>
+      <Snackbar open={!!stockAlert} autoHideDuration={8000} onClose={() => setStockAlert('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="warning" onClose={() => setStockAlert('')} sx={{ fontWeight: 'bold' }}>
+          ⚠️ {stockAlert}
+        </Alert>
       </Snackbar>
     </Container>
   );

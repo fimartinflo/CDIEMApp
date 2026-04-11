@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Box,
@@ -30,11 +30,20 @@ import {
   List,
   ListItem,
   ListItemText,
-  Tooltip
+  Tooltip,
+  Tabs,
+  Tab,
+  Badge
 } from '@mui/material';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { PickersDay } from '@mui/x-date-pickers/PickersDay';
+import esLocale from 'date-fns/locale/es';
 import {
   Add as AddIcon,
   Edit as EditIcon,
+  Delete as DeleteIcon,
   Search as SearchIcon,
   CalendarToday as CalendarIcon,
   History as HistoryIcon,
@@ -51,6 +60,24 @@ const secToHMS = (s) => {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
+};
+
+// Componente de día del calendario con badge para visitas — definido fuera del componente
+// para evitar que React lo trate como un tipo nuevo en cada render.
+const VisitDay = ({ visitDates, day, outsideCurrentMonth, ...other }) => {
+  const dateStr = day instanceof Date ? day.toISOString().split('T')[0] : '';
+  const hasVisit = !outsideCurrentMonth && visitDates.has(dateStr);
+  return (
+    <Badge
+      key={dateStr}
+      overlap="circular"
+      badgeContent={hasVisit ? '●' : undefined}
+      color="primary"
+      sx={{ '& .MuiBadge-badge': { fontSize: 8, minWidth: 12, height: 12 } }}
+    >
+      <PickersDay {...other} outsideCurrentMonth={outsideCurrentMonth} day={day} />
+    </Badge>
+  );
 };
 
 const Patients = () => {
@@ -87,6 +114,21 @@ const Patients = () => {
   // Datos de visitas agendadas (para el diálogo de agendar)
   const [patientVisits, setPatientVisits] = useState([]);
   const [loadingVisits, setLoadingVisits] = useState(false);
+  const [visitsPage, setVisitsPage] = useState(1);
+  const VISITS_PER_PAGE = 5;
+
+  // Tab del diálogo de agenda (0=Lista, 1=Calendario)
+  const [scheduleTab, setScheduleTab] = useState(0);
+
+  // Set de fechas con visitas activas — memoizado para no recalcular en cada render
+  const visitDates = useMemo(() => new Set(
+    patientVisits
+      .filter(v => v.estado !== 'cancelada')
+      .map(v => (v.fechaVisita || v.fecha || '').split('T')[0])
+  ), [patientVisits]);
+
+  // Diálogo de editar visita
+  const [editVisitDialog, setEditVisitDialog] = useState({ open: false, visit: null, saving: false });
 
   useEffect(() => {
     loadPatients();
@@ -172,6 +214,8 @@ const Patients = () => {
       notas: ''
     });
     setOpenScheduleDialog(true);
+    setVisitsPage(1);    // Resetear paginación al abrir
+    setScheduleTab(0);   // Volver a la pestaña Lista
     // Cargar visitas existentes del paciente
     setLoadingVisits(true);
     try {
@@ -203,6 +247,39 @@ const Patients = () => {
       loadPatients();
     } catch (err) {
       setError(err.response?.data?.message || 'Error al agendar visita');
+    }
+  };
+
+  // Editar visita
+  const handleUpdateVisit = async () => {
+    const { visit } = editVisitDialog;
+    setEditVisitDialog(prev => ({ ...prev, saving: true }));
+    try {
+      await api.put(`/patients/${visit.pacienteId}/visits/${visit.id}`, {
+        fechaVisita: visit.fechaVisita,
+        tipoVisita: visit.tipoVisita,
+        notas: visit.notas
+      });
+      setSuccess('Visita actualizada');
+      setEditVisitDialog({ open: false, visit: null, saving: false });
+      // Refrescar lista de visitas del paciente
+      const res = await api.get(`/patients/${selectedPatient.id}`);
+      setPatientVisits(res.data?.data?.visitas || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al actualizar visita');
+      setEditVisitDialog(prev => ({ ...prev, saving: false }));
+    }
+  };
+
+  // Cancelar visita
+  const handleCancelVisit = async (visit) => {
+    try {
+      await api.delete(`/patients/${visit.pacienteId}/visits/${visit.id}`);
+      setSuccess('Visita cancelada');
+      const res = await api.get(`/patients/${selectedPatient.id}`);
+      setPatientVisits(res.data?.data?.visitas || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al cancelar visita');
     }
   };
 
@@ -448,15 +525,15 @@ const Patients = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo: Agendar visita + historial de visitas */}
+      {/* Diálogo: Agendar visita + historial de visitas + calendario */}
       <Dialog open={openScheduleDialog} onClose={() => setOpenScheduleDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           Agenda de Visitas — {selectedPatient?.nombreCompleto}
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+        <DialogContent sx={{ pt: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
             {/* Formulario de nueva visita */}
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: '0 0 260px' }}>
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 Nueva Visita
               </Typography>
@@ -497,46 +574,121 @@ const Patients = () => {
               </Box>
             </Box>
 
-            {/* Historial de visitas */}
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Historial de Visitas
-              </Typography>
+            {/* Panel derecho: Lista o Calendario con tabs */}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Tabs value={scheduleTab} onChange={(_, v) => setScheduleTab(v)} sx={{ mb: 1 }}>
+                <Tab label="Lista de visitas" />
+                <Tab label="Calendario" />
+              </Tabs>
               <Divider sx={{ mb: 1 }} />
-              {loadingVisits ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : patientVisits.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  Sin visitas registradas
-                </Typography>
-              ) : (
-                <List dense sx={{ maxHeight: 320, overflowY: 'auto' }}>
-                  {patientVisits
-                    .slice()
-                    .sort((a, b) => new Date(b.fechaVisita || b.fecha) - new Date(a.fechaVisita || a.fecha))
-                    .map((visita, idx) => (
-                      <ListItem key={idx} divider>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="body2" fontWeight="medium">
-                                {formatDate(visita.fechaVisita || visita.fecha)}
-                              </Typography>
-                              <Chip
-                                label={visita.tipoVisita || visita.tipo || 'consulta'}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
+
+              {/* Tab 0: Lista paginada */}
+              {scheduleTab === 0 && (
+                loadingVisits ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : patientVisits.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    Sin visitas registradas
+                  </Typography>
+                ) : (() => {
+                    const sorted = patientVisits
+                      .slice()
+                      .sort((a, b) => new Date(b.fechaVisita || b.fecha) - new Date(a.fechaVisita || a.fecha));
+                    const totalVisitPages = Math.ceil(sorted.length / VISITS_PER_PAGE);
+                    const pageSlice = sorted.slice((visitsPage - 1) * VISITS_PER_PAGE, visitsPage * VISITS_PER_PAGE);
+                    return (
+                      <>
+                        <List dense>
+                          {pageSlice.map((visita, idx) => (
+                            <ListItem
+                              key={idx}
+                              divider
+                              secondaryAction={
+                                visita.estado !== 'cancelada' && (
+                                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                    <Tooltip title="Editar visita">
+                                      <IconButton size="small" color="primary" onClick={() =>
+                                        setEditVisitDialog({
+                                          open: true,
+                                          visit: {
+                                            id: visita.id,
+                                            pacienteId: visita.pacienteId,
+                                            fechaVisita: visita.fechaVisita ? visita.fechaVisita.split('T')[0] : '',
+                                            tipoVisita: visita.tipoVisita || 'consulta',
+                                            notas: visita.notas || ''
+                                          },
+                                          saving: false
+                                        })
+                                      }>
+                                        <EditIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Cancelar visita">
+                                      <IconButton size="small" color="error" onClick={() => handleCancelVisit(visita)}>
+                                        <DeleteIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Box>
+                                )
+                              }
+                            >
+                              <ListItemText
+                                primary={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" fontWeight="medium">
+                                      {formatDate(visita.fechaVisita || visita.fecha)}
+                                    </Typography>
+                                    <Chip
+                                      label={visita.tipoVisita || visita.tipo || 'consulta'}
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                    />
+                                    {visita.estado === 'cancelada' && (
+                                      <Chip label="Cancelada" size="small" color="error" />
+                                    )}
+                                  </Box>
+                                }
+                                secondary={visita.notas || visita.observaciones || 'Sin notas'}
                               />
-                            </Box>
-                          }
-                          secondary={visita.notas || visita.observaciones || 'Sin notas'}
-                        />
-                      </ListItem>
-                    ))}
-                </List>
+                            </ListItem>
+                          ))}
+                        </List>
+                        {totalVisitPages > 1 && (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                            <Pagination
+                              count={totalVisitPages}
+                              page={visitsPage}
+                              onChange={(_, p) => setVisitsPage(p)}
+                              size="small"
+                              color="primary"
+                            />
+                          </Box>
+                        )}
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'right', mt: 0.5 }}>
+                          {sorted.length} visita{sorted.length !== 1 ? 's' : ''} en total
+                        </Typography>
+                      </>
+                    );
+                  })()
+              )}
+
+              {/* Tab 1: Calendario — visitDates memoizado, VisitDay definido fuera del componente */}
+              {scheduleTab === 1 && (
+                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={esLocale}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <DateCalendar
+                      readOnly
+                      slots={{ day: (props) => <VisitDay visitDates={visitDates} {...props} /> }}
+                      sx={{ width: '100%', maxWidth: 360 }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      ● Días con visita programada ({visitDates.size} en total)
+                    </Typography>
+                  </Box>
+                </LocalizationProvider>
               )}
             </Box>
           </Box>
@@ -632,6 +784,74 @@ const Patients = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenHistoryDialog(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo: Editar visita */}
+      <Dialog
+        open={editVisitDialog.open}
+        onClose={() => !editVisitDialog.saving && setEditVisitDialog({ open: false, visit: null, saving: false })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Editar Visita</DialogTitle>
+        <DialogContent>
+          {editVisitDialog.visit && (
+            <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Fecha de Visita"
+                type="date"
+                fullWidth
+                value={editVisitDialog.visit.fechaVisita}
+                onChange={(e) => setEditVisitDialog(prev => ({
+                  ...prev,
+                  visit: { ...prev.visit, fechaVisita: e.target.value }
+                }))}
+                InputLabelProps={{ shrink: true }}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Tipo de Visita</InputLabel>
+                <Select
+                  value={editVisitDialog.visit.tipoVisita}
+                  label="Tipo de Visita"
+                  onChange={(e) => setEditVisitDialog(prev => ({
+                    ...prev,
+                    visit: { ...prev.visit, tipoVisita: e.target.value }
+                  }))}
+                >
+                  <MenuItem value="consulta">Consulta</MenuItem>
+                  <MenuItem value="tratamiento">Tratamiento</MenuItem>
+                  <MenuItem value="control">Control</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Notas"
+                fullWidth
+                multiline
+                rows={3}
+                value={editVisitDialog.visit.notas}
+                onChange={(e) => setEditVisitDialog(prev => ({
+                  ...prev,
+                  visit: { ...prev.visit, notas: e.target.value }
+                }))}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setEditVisitDialog({ open: false, visit: null, saving: false })}
+            disabled={editVisitDialog.saving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleUpdateVisit}
+            variant="contained"
+            disabled={editVisitDialog.saving}
+          >
+            {editVisitDialog.saving ? 'Guardando...' : 'Guardar'}
+          </Button>
         </DialogActions>
       </Dialog>
 

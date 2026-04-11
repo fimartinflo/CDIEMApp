@@ -39,6 +39,20 @@ jest.mock('../components/PatientForm', () => ({
   ),
 }));
 
+// @mui/x-date-pickers usa ESM — mockear para Jest
+jest.mock('@mui/x-date-pickers/DateCalendar', () => ({
+  DateCalendar: () => <div data-testid="date-calendar" />,
+}));
+jest.mock('@mui/x-date-pickers/LocalizationProvider', () => ({
+  LocalizationProvider: ({ children }) => <>{children}</>,
+}));
+jest.mock('@mui/x-date-pickers/AdapterDateFns', () => ({
+  AdapterDateFns: class {},
+}));
+jest.mock('@mui/x-date-pickers/PickersDay', () => ({
+  PickersDay: ({ day, children }) => <div>{children}</div>,
+}));
+
 jest.mock('../services/authService', () => ({
   __esModule: true,
   default: {

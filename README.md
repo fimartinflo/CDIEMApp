@@ -23,19 +23,24 @@ Sistema de gestión clínica para un centro oncológico. Permite administrar pac
 
 ## Características Principales
 
-- Gestión completa de pacientes (CRUD + búsqueda debounced + exportación CSV)
+- Gestión completa de pacientes (CRUD + búsqueda debounced + exportación CSV + campos clínicos)
 - Gestión de sillones de atención con estado en tiempo real (polling cada 30s)
 - Asignación de pacientes a sillones y registro de sesiones clínicas
-- Administración de medicamentos por sesión (con descuento de stock automático)
-- Control de inventario con alertas de stock bajo y vencimiento
+- Notas clínicas al liberar sillón + resumen de sesión imprimible con medicamentos y costos
+- Administración de medicamentos por sesión (con descuento de stock automático + alertas de stock crítico)
+- Control de inventario con alertas de stock bajo, vencimiento, categorías farmacológicas e indicador de último uso
+- Programación de visitas con calendario visual, edición y cancelación
+- Búsqueda global en barra superior (pacientes + medicamentos simultáneamente)
 - Dashboard con métricas del sistema en tiempo real
-- Módulo de Reportes con costos por sesión y exportación Excel
+- Módulo de Reportes con costos por sesión, exportación Excel y envío por email
 - Gestión de usuarios (solo admin): crear, editar, activar/desactivar, reset de contraseña
+- Log de auditoría con filtros y paginación (admin)
 - Autenticación JWT con roles diferenciados (admin / enfermera / administracion)
 - Rate limiting en login: 10 intentos / 15 min por IP
-- Aviso de sesión expirada al redirigir al login
+- Backup automático de SQLite al iniciar el servidor (rotación a 7 copias)
 - Compresión gzip en todas las respuestas del backend
 - Persistencia local con SQLite (sin conexión a internet requerida)
+- Soporte multi-BD: SQLite (local) / PostgreSQL via Supabase / Turso libSQL (edge)
 
 ---
 
@@ -379,6 +384,10 @@ pm2 restart cdiem-backend
 | GET | `/api/patients/search` | Búsqueda por nombre/RUT/pasaporte |
 | GET | `/api/patients/export` | Exportar CSV (BOM, compatible Excel) |
 | GET | `/api/patients/:id/history` | Historial de sesiones clínicas |
+| POST | `/api/patients/:id/schedule-visit` | Agendar visita |
+| GET | `/api/patients/upcoming-visits` | Próximas visitas programadas |
+| PUT | `/api/patients/:id/visits/:visitId` | Editar visita |
+| DELETE | `/api/patients/:id/visits/:visitId` | Cancelar visita (borrado lógico) |
 
 ### Sillones *(admin + enfermera)*
 | Método | Ruta | Descripción |
@@ -407,10 +416,16 @@ pm2 restart cdiem-backend
 | GET | `/api/reports/patient/:id` | Informe individual de paciente |
 | POST | `/api/reports/email` | Enviar reporte por email |
 
+### Auditoría *(admin only)*
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/audit` | Log de auditoría con filtros y paginación |
+
 ### Utilidades
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/dashboard` | Métricas del sistema |
+| GET | `/api/search?q=` | Búsqueda global (pacientes + medicamentos) |
 | GET | `/health` | Health check (DB status, uptime, dialect, Node version) |
 
 ---
@@ -420,15 +435,17 @@ pm2 restart cdiem-backend
 ```
 1. Login → JWT almacenado en localStorage, menú según rol
 2. Dashboard → métricas del sistema en tiempo real
-3. Pacientes → CRUD completo + búsqueda debounced + agendar visita
-4. Inventario → gestión de medicamentos (stock, alertas)
+3. Pacientes → CRUD + búsqueda debounced + visitas (calendario/lista) + campos clínicos
+4. Inventario → medicamentos con categoría, stock, alertas, último uso
 5. Sillones (actualización automática cada 30s):
    a. Sillón disponible → "Asignar Paciente" → selector de pacientes activos
       (opcional: agregar medicamentos al momento de asignar)
    b. Sesión activa → "+ Medicamento" → selector del inventario (descuenta stock)
-   c. "Liberar Sillón" → cierra sesión, sillón vuelve a disponible
+      (alerta naranja si stock queda en nivel crítico)
+   c. "Liberar Sillón" → notas clínicas → resumen imprimible con medicamentos/costos
 6. Reportes → seleccionar período → ver costos por paciente/medicamento
-   → exportar Excel (CSV)
+   → exportar Excel (CSV) o enviar por email
+7. Búsqueda global → barra en AppBar busca pacientes y medicamentos simultáneamente
 ```
 
 ---
@@ -439,8 +456,11 @@ pm2 restart cdiem-backend
 ```bash
 npm start              # Producción (node src/app.js)
 npm run dev            # Desarrollo con nodemon (auto-restart)
-npm run init-db        # Inicializar BD con datos de prueba
-node test-full.mjs     # Suite de 63 tests de integración (requiere BD limpia)
+npm run init-db        # Inicializar BD con migraciones + datos de prueba
+npm run init-db:force  # Reset completo (solo desarrollo)
+npm run migrate        # Aplicar migraciones pendientes
+npm run migrate:status # Ver estado de migraciones
+node test-api.js       # Suite de 93 tests de integración (requiere BD limpia)
 ```
 
 ### Frontend
@@ -478,13 +498,23 @@ npm run build          # Build de producción (output: build/)
 - ✅ Selector de medicamentos del inventario al asignar sillón
 - ✅ Polling en tiempo real para estado de sillones (cada 30s)
 - ✅ Variables de entorno para API_URL y CORS
-- ✅ Módulo de Reportes con costos y exportación Excel
-- ✅ Suite de 63 tests de integración backend + 32 tests frontend
-- ✅ Migraciones Sequelize con umzug (reemplaza sync())
-- ✅ Soporte multi-dialectos: SQLite (local) / Turso libSQL (cloud)
+- ✅ Módulo de Reportes con costos, exportación Excel y envío por email
+- ✅ Log de auditoría con filtros y paginación (admin only)
+- ✅ Tests E2E con Playwright (login, dashboard, chairs)
+- ✅ Suite de 93 tests de integración backend + 49 tests frontend
+- ✅ Migraciones Sequelize con umzug (10 migraciones)
+- ✅ Soporte multi-BD: SQLite (local) / PostgreSQL via Supabase / Turso libSQL (edge)
+- ✅ Campos clínicos en paciente: diagnóstico, protocolo de tratamiento, alergias
+- ✅ Notas clínicas al liberar sillón + resumen de sesión imprimible
+- ✅ Gestión completa de visitas: agendar, editar, cancelar + vista calendario
+- ✅ Categoría de medicamentos (quimioterapia, premedicación, antieméticos, soporte, general)
+- ✅ Indicador "Último uso" en inventario
+- ✅ Alertas de stock crítico al administrar medicamentos en sillones
+- ✅ Backup automático de SQLite al iniciar (rotación a 7 copias)
+- ✅ Búsqueda global en barra superior (pacientes + medicamentos)
 
 ## Pendiente / Próximos Pasos
 
-- Log de auditoría (quién creó/modificó cada registro)
-- Tests E2E con Playwright
-- Migración futura a PostgreSQL
+- Dashboard con gráficos (recharts: sesiones por día + top medicamentos)
+- Exportación PDF nativa (jsPDF + html2canvas para Reports.js)
+- 2FA/TOTP para rol admin (Google Authenticator)

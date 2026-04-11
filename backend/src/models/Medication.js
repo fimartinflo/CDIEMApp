@@ -23,6 +23,11 @@ const Medication = sequelize.define('Medication', {
   proveedor:         DataTypes.STRING,
   // Umbral de alerta: si cantidad <= minimoStock se muestra advertencia en UI
   minimoStock:     { type: DataTypes.INTEGER, defaultValue: 10 },
+  /**
+   * Categoría farmacológica.
+   * Valores esperados: 'quimioterapia' | 'premedicacion' | 'antieméticos' | 'soporte' | 'general'
+   */
+  categoria:       { type: DataTypes.STRING,  defaultValue: 'general' },
   activo:          { type: DataTypes.BOOLEAN, defaultValue: true }  // Borrado lógico
 });
 

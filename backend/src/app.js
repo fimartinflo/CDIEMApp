@@ -40,6 +40,7 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
+const { Op } = require('sequelize');
 require('dotenv').config();
 
 const app = express();
@@ -69,6 +70,7 @@ const chairRoutes   = require('./routes/chairRoutes');
 const reportRoutes  = require('./routes/reportRoutes');
 const auditRoutes   = require('./routes/auditRoutes');
 const logAudit      = require('./utils/audit');
+const { runBackup } = require('./utils/backup');
 
 // === Conectar BD ===
 // Se ejecuta una vez al iniciar el servidor. sequelize.sync() crea las tablas que
@@ -184,6 +186,54 @@ app.use('/api/reports', reportRoutes);
 
 // auditRoutes: GET /api/audit (admin only)
 app.use('/api/audit', auditRoutes);
+
+// ==================== BÚSQUEDA GLOBAL ====================
+/**
+ * GET /api/search?q=texto
+ * Busca simultáneamente en pacientes y medicamentos.
+ * Devuelve hasta 5 resultados de cada tipo, agrupados.
+ */
+app.get('/api/search', auth, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) {
+      return success(res, 'Búsqueda', { pacientes: [], medicamentos: [] });
+    }
+    const trimmed = q.trim();
+    const term = `%${trimmed}%`;
+    // Normalizar RUT: quitar puntos y guión para buscar igual que searchPatients
+    const cleanRUT = trimmed.replace(/\./g, '').replace('-', '');
+
+    const [pacientes, medicamentos] = await Promise.all([
+      Patient.findAll({
+        where: {
+          [Op.or]: [
+            { nombreCompleto: { [Op.like]: term } },
+            { rut: { [Op.like]: `%${cleanRUT}%` } },
+            { pasaporte: { [Op.like]: term } }
+          ]
+        },
+        attributes: ['id', 'nombreCompleto', 'rut', 'pasaporte', 'tipoIdentificacion', 'estado'],
+        limit: 5,
+        order: [['nombreCompleto', 'ASC']]
+      }),
+      Medication.findAll({
+        where: {
+          nombre: { [Op.like]: term },
+          activo: true
+        },
+        attributes: ['id', 'nombre', 'cantidad', 'unidad', 'categoria'],
+        limit: 5,
+        order: [['nombre', 'ASC']]
+      })
+    ]);
+
+    success(res, 'Búsqueda', { pacientes, medicamentos });
+  } catch (err) {
+    console.error('❌ Error en búsqueda global:', err);
+    error(res, 'Error en búsqueda', 'SEARCH_ERROR', 500);
+  }
+});
 
 // ==================== SILLONES: LISTADO CON ESTADO DE SESIÓN ====================
 /**
@@ -352,11 +402,17 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
     const duracionSegundos = Math.round((horaFin - new Date(session.horaInicio)) / 1000);
     const duracionMin = Math.floor(duracionSegundos / 60);
 
+    // Notas clínicas: usar las del body o auto-generadas si no vienen
+    const { notas } = req.body;
+    const notasFinales = notas?.trim()
+      ? `${notas.trim()} — Duración: ${duracionMin} min`
+      : `Atención completada. Duración: ${duracionMin} minutos`;
+
     // Cerrar sesión
     await session.update({
       horaFin,
       estado: 'finalizada',
-      notas: `Atención completada. Duración: ${duracionMin} minutos`
+      notas: notasFinales
     }, { transaction });
 
     // Liberar sillón y actualizar estado del paciente
@@ -368,6 +424,19 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
 
     await transaction.commit();
 
+    // Obtener medicamentos administrados durante la sesión (post-commit, datos visibles)
+    const sessionMeds = await SessionMedication.findAll({
+      where: { sessionId: session.id },
+      include: [{ model: Medication, attributes: ['nombre', 'unidad'] }]
+    });
+    const medicamentos = sessionMeds.map(sm => ({
+      nombre: sm.Medication?.nombre || 'Desconocido',
+      cantidad: sm.cantidadAdministrada,
+      unidad: sm.Medication?.unidad || 'unidad',
+      precioUnitario: sm.precioUnitario || 0,
+      hora: sm.horaAdministracion || sm.createdAt
+    }));
+
     await logAudit({ req, accion: 'LIBERAR_SILLON', entidad: 'ChairSession',
       entidadId: session.id, detalles: { duracionSegundos, paciente: session.Patient?.nombreCompleto } });
 
@@ -378,7 +447,9 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
         duracionSegundos,
         horaInicio: session.horaInicio,
         horaFin,
-        paciente: session.Patient?.nombreCompleto || null
+        paciente: session.Patient?.nombreCompleto || null,
+        notas: notasFinales,
+        medicamentos
       }
     });
 
@@ -694,6 +765,10 @@ app.use(errorHandler);
 
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3001;
+
+// Backup automático de SQLite al arrancar (no bloquea el inicio)
+runBackup().catch(() => {});
+
 app.listen(PORT, () => {
   console.log(`
   🚀 Servidor CDIEM corriendo en puerto ${PORT}
