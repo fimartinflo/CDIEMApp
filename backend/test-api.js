@@ -463,7 +463,7 @@ async function main() {
   // Reinicializar DB para garantizar estado limpio
   console.log('\n  Reinicializando base de datos...');
   try {
-    execSync('node init-db.js', { cwd: __dirname, stdio: 'pipe' });
+    execSync('node init-db.js --force', { cwd: __dirname, stdio: 'pipe' });
     console.log('  ✅ Base de datos reinicializada\n');
   } catch (e) {
     console.error('  ❌ Error reinicializando DB:', e.stderr?.toString());
