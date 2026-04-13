@@ -129,7 +129,6 @@ const Login = () => {
               value={formData.username}
               onChange={handleChange}
               disabled={loading}
-              helperText="admin | enfermera | administracion"
             />
             
             <TextField
@@ -144,7 +143,6 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               disabled={loading}
-              helperText="admin123 | enfermera123 | admin2024"
             />
             
             <Button
@@ -162,20 +160,6 @@ const Login = () => {
             </Button>
           </Box>
 
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="body2" color="textSecondary" gutterBottom>
-              Credenciales de acceso:
-            </Typography>
-            <Typography variant="caption" display="block">
-              <strong>admin</strong> / admin123 — acceso completo
-            </Typography>
-            <Typography variant="caption" display="block">
-              <strong>enfermera</strong> / enfermera123 — módulo clínico
-            </Typography>
-            <Typography variant="caption" display="block">
-              <strong>administracion</strong> / admin2024 — inventario + reportes
-            </Typography>
-          </Box>
         </Paper>
       </Box>
 
