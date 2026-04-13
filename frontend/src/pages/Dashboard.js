@@ -1,29 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, Card, CardContent, Typography, Button, Box, CircularProgress, Divider } from '@mui/material';
-import { People, Chair, Inventory, Assessment, ManageAccounts } from '@mui/icons-material';
+import {
+  Grid, Card, CardContent, Typography, Button, Box,
+  CircularProgress, Divider
+} from '@mui/material';
+import {
+  People, Chair, Inventory, Assessment, ManageAccounts,
+  LocalHospital, Warning
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import authService from '../services/authService';
+
+// ── Tarjeta de métrica con fondo degradado ────────────────────────────
+const MetricCard = ({ label, value, sublabel, color, icon }) => (
+  <Card
+    sx={{
+      background: `linear-gradient(135deg, ${color}cc, ${color})`,
+      color: '#fff',
+      height: '100%',
+      boxShadow: `0 4px 20px ${color}55`
+    }}
+  >
+    <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+      <Box sx={{ mb: 0.5, opacity: 0.85 }}>{icon}</Box>
+      <Typography variant="h3" sx={{ fontWeight: 700, lineHeight: 1 }}>
+        {value ?? '—'}
+      </Typography>
+      <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
+        {label}
+      </Typography>
+      {sublabel && (
+        <Typography variant="caption" sx={{ opacity: 0.75 }}>
+          {sublabel}
+        </Typography>
+      )}
+    </CardContent>
+  </Card>
+);
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
 
-  // Métricas clínicas del sistema (pacientes, sillones, sesiones, medicamentos críticos)
-  const [metrics, setMetrics] = useState(null);
+  const [metrics, setMetrics]               = useState(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
-
-  // Contador de usuarios activos (solo para admin)
-  const [totalUsuarios, setTotalUsuarios] = useState(null);
+  const [totalUsuarios, setTotalUsuarios]   = useState(null);
 
   useEffect(() => {
-    // Carga métricas generales del dashboard
     api.get('/dashboard')
       .then(res => setMetrics(res.data.data))
       .catch(() => setMetrics(null))
       .finally(() => setLoadingMetrics(false));
 
-    // El conteo de usuarios solo se solicita si el usuario es admin
     if (user?.role === 'admin') {
       api.get('/auth/users')
         .then(res => setTotalUsuarios((res.data.data || []).length))
@@ -74,42 +102,42 @@ const Dashboard = () => {
     }
   ];
 
-  // Solo mostrar las cards a las que el rol tiene acceso
   const cards = allCards.filter(c => c.roles.includes(user?.role));
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-        CDIEM - Panel de Control
-      </Typography>
+      {/* Encabezado */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1976d2' }}>
+          CDIEM — Panel de Control
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          Bienvenido, {user?.username} · {user?.role}
+        </Typography>
+      </Box>
 
-      <Typography variant="subtitle1" gutterBottom sx={{ mb: 3 }}>
-        Bienvenido, {user?.username} ({user?.role})
-      </Typography>
-
-      <Grid container spacing={3} sx={{ mt: 2 }}>
+      {/* Tarjetas de navegación */}
+      <Grid container spacing={3}>
         {cards.map((card) => (
-          <Grid item xs={12} sm={6} md={4} key={card.title}>
+          <Grid key={card.title} xs={12} sm={6} md={4}>
             <Card
               sx={{
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                transition: 'transform 0.3s',
-                border: `2px solid ${card.color}20`,
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                border: `2px solid ${card.color}22`,
                 '&:hover': {
-                  transform: 'scale(1.03)',
+                  transform: 'translateY(-4px)',
                   cursor: 'pointer',
-                  boxShadow: `0 8px 16px ${card.color}30`
+                  boxShadow: `0 8px 24px ${card.color}30`
                 }
               }}
               onClick={() => navigate(card.path)}
             >
               <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
-                <Box sx={{ color: card.color, mb: 2 }}>
-                  {card.icon}
-                </Box>
-                <Typography gutterBottom variant="h5" component="h2" sx={{ fontWeight: 'medium' }}>
+                <Box sx={{ color: card.color, mb: 1.5 }}>{card.icon}</Box>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {card.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -118,16 +146,13 @@ const Dashboard = () => {
               </CardContent>
               <Button
                 size="small"
+                variant="outlined"
                 sx={{
-                  m: 2,
+                  m: 2, mt: 0,
                   color: card.color,
                   borderColor: card.color,
-                  '&:hover': {
-                    borderColor: card.color,
-                    backgroundColor: `${card.color}10`
-                  }
+                  '&:hover': { borderColor: card.color, bgcolor: `${card.color}10` }
                 }}
-                variant="outlined"
               >
                 Acceder
               </Button>
@@ -136,100 +161,65 @@ const Dashboard = () => {
         ))}
       </Grid>
 
-      {/* Métricas en tiempo real — solo para roles clínicos */}
+      {/* Métricas — solo roles clínicos */}
       {['admin', 'enfermera'].includes(user?.role) && (
-        <Box sx={{ mt: 4, p: 3, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-          <Typography variant="h6" gutterBottom>
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
             Estado del Sistema
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: 3 }} />
 
           {loadingMetrics ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
             </Box>
           ) : metrics ? (
-            <Grid container spacing={3}>
-              <Grid item xs={6} sm={3}>
-                <Card variant="outlined">
-                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                    <Typography variant="h4" color="primary.main">
-                      {metrics.pacientes?.total ?? '—'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Pacientes totales
-                    </Typography>
-                    <Typography variant="caption" color="success.main">
-                      {metrics.pacientes?.activos ?? 0} activos
-                    </Typography>
-                  </CardContent>
-                </Card>
+            <Grid container spacing={2}>
+              <Grid xs={6} sm={6} md={3}>
+                <MetricCard
+                  label="Pacientes totales"
+                  value={metrics.pacientes?.total}
+                  sublabel={`${metrics.pacientes?.activos ?? 0} activos`}
+                  color="#1976d2"
+                  icon={<People />}
+                />
               </Grid>
-
-              <Grid item xs={6} sm={3}>
-                <Card variant="outlined">
-                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                    <Typography variant="h4" color="success.main">
-                      {metrics.sillones?.disponibles ?? '—'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Sillones disponibles
-                    </Typography>
-                    <Typography variant="caption" color="error.main">
-                      {metrics.sillones?.ocupados ?? 0} ocupados
-                    </Typography>
-                  </CardContent>
-                </Card>
+              <Grid xs={6} sm={6} md={3}>
+                <MetricCard
+                  label="Sillones disponibles"
+                  value={metrics.sillones?.disponibles}
+                  sublabel={`${metrics.sillones?.ocupados ?? 0} ocupados`}
+                  color="#2e7d32"
+                  icon={<Chair />}
+                />
               </Grid>
-
-              <Grid item xs={6} sm={3}>
-                <Card variant="outlined">
-                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                    <Typography variant="h4" color="warning.main">
-                      {metrics.sesionesActivas ?? '—'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Sesiones activas
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      En este momento
-                    </Typography>
-                  </CardContent>
-                </Card>
+              <Grid xs={6} sm={6} md={3}>
+                <MetricCard
+                  label="Sesiones activas"
+                  value={metrics.sesionesActivas}
+                  sublabel="En este momento"
+                  color="#ed6c02"
+                  icon={<LocalHospital />}
+                />
               </Grid>
-
-              <Grid item xs={6} sm={3}>
-                <Card variant="outlined">
-                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                    <Typography variant="h4" color={metrics.medicamentosCriticos?.length > 0 ? 'error.main' : 'text.primary'}>
-                      {metrics.medicamentosCriticos?.length ?? '—'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Medicamentos críticos
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Stock bajo o agotado
-                    </Typography>
-                  </CardContent>
-                </Card>
+              <Grid xs={6} sm={6} md={3}>
+                <MetricCard
+                  label="Medicamentos críticos"
+                  value={metrics.medicamentosCriticos?.length}
+                  sublabel="Stock bajo o agotado"
+                  color={metrics.medicamentosCriticos?.length > 0 ? '#c62828' : '#00695c'}
+                  icon={<Warning />}
+                />
               </Grid>
-
-              {/* Métrica de usuarios — solo visible para admin */}
               {user?.role === 'admin' && (
-                <Grid item xs={6} sm={3}>
-                  <Card variant="outlined">
-                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                      <Typography variant="h4" color="#00695c">
-                        {totalUsuarios ?? '—'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Usuarios registrados
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Cuentas del sistema
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                <Grid xs={6} sm={6} md={3}>
+                  <MetricCard
+                    label="Usuarios registrados"
+                    value={totalUsuarios}
+                    sublabel="Cuentas del sistema"
+                    color="#00695c"
+                    icon={<ManageAccounts />}
+                  />
                 </Grid>
               )}
             </Grid>
