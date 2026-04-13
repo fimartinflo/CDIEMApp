@@ -65,7 +65,10 @@ CDIEMApp/
 │   │   │       ├── 004-create-medications.js
 │   │   │       ├── 005-create-chair-sessions.js
 │   │   │       ├── 006-create-session-medications.js
-│   │   │       └── 007-create-visits.js
+│   │   │       ├── 007-create-visits.js
+│   │   │       ├── 008-create-audit-logs.js
+│   │   │       ├── 009-add-patient-clinical-fields.js
+│   │   │       └── 010-add-medication-category.js
 │   │   ├── models/              # Modelos Sequelize
 │   │   │   ├── Patient.js
 │   │   │   ├── Chair.js
@@ -109,11 +112,14 @@ CDIEMApp/
     │   │   ├── PatientSearch.js # Búsqueda de pacientes
     │   │   └── PrivateRoute.js  # Protección de rutas
     │   ├── pages/
-    │   │   ├── Login.js
-    │   │   ├── Dashboard.js     # Métricas reales del backend
+    │   │   ├── Login.js         # Sin credenciales visibles en UI
+    │   │   ├── Dashboard.js     # Métricas con tarjetas degradado color + acceso rápido por rol
     │   │   ├── Patients.js
     │   │   ├── Chairs.js
-    │   │   └── Inventory.js
+    │   │   ├── Inventory.js
+    │   │   ├── Reports.js
+    │   │   ├── Users.js         # Solo admin
+    │   │   └── Audit.js         # Solo admin
     │   └── services/
     │       ├── api.js           # Instancia Axios + interceptores JWT
     │       ├── authService.js
@@ -327,12 +333,14 @@ npm run build    # Build de producción
 - **`inventoryService.js`** — CRUD completo + `updateQuantity(id, cantidad, tipo, motivo)`
 
 ### Páginas
-- **`Dashboard.js`** — Consume `GET /api/dashboard`, filtra tarjetas de acceso rápido según rol del usuario
-- **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, historial clínico con duración en HH:MM:SS; botón "Exportar CSV" → `GET /api/patients/export`
+- **`Login.js`** — Formulario limpio sin hints de credenciales en UI. Muestra Snackbar si sesión expiró (`sessionStorage.session_expired`). Credenciales documentadas solo en README.
+- **`Dashboard.js`** — Tarjetas de acceso rápido filtradas por rol. Sección "Estado del Sistema" con 4-5 tarjetas de métricas con **fondo degradado en color** (azul/verde/naranja/teal) e íconos blancos. Solo visible para `admin` y `enfermera`.
+- **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, campos clínicos (diagnóstico, protocolo, alergias), historial clínico con duración en HH:MM:SS, visitas con vista calendario/lista (paginado), botón "Exportar CSV" → `GET /api/patients/export`
 - **`Users.js`** — Solo admin: tabla con crear/editar/toggle-active/reset-password usando Dialogs MUI
-- **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos, notas clínicas al liberar, resumen de sesión imprimible post-liberación
+- **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos, notas clínicas al liberar, resumen de sesión imprimible post-liberación, alerta Snackbar naranja si stock queda crítico
 - **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"; columna "Último uso" (fecha de última administración); filtro por categoría; botones de escritura visibles solo para `admin` y `administracion`
 - **`Reports.js`** — Selección de período, tabla expandible por paciente, exportación Excel (CSV con BOM para Excel español), diálogo de informe individual con impresión funcional, envío por email
+- **`Audit.js`** — Solo admin: log de eventos del sistema con filtros por acción/usuario/entidad y paginación
 
 ### Componentes
 - **`PatientForm.js`** — Formulario reutilizable (crear/editar)
@@ -404,6 +412,10 @@ npm run build    # Build de producción
 - ✅ **G13 — Indicador "Último uso" en Inventario**: subconsulta `MAX(SessionMedications.createdAt)` en `getAllItems`; columna "Último Uso" en tabla de Inventory.js
 - ✅ **E4 — Resumen de sesión imprimible**: al liberar sillón, Dialog con paciente/duración/medicamentos/precios + botón Imprimir (CSS print oculta el resto)
 - ✅ **F2 — Búsqueda global**: `GET /api/search?q=` (pacientes + medicamentos); barra de búsqueda debounced en AppBar de Layout.js con Popper de resultados agrupados
+- ✅ **Dashboard UI** — Tarjetas de métricas rediseñadas con fondo degradado en color (azul/verde/naranja/teal), íconos blancos, sombra de color. Hover en tarjetas de navegación con `translateY(-4px)`.
+- ✅ **Login limpio** — Eliminados helperText de campos y bloque "Credenciales de acceso". Credenciales solo en README.md.
+- ✅ **Fix User.js ENUM** — `DataTypes.ENUM('admin','doctor','asistente','inventario')` → `DataTypes.STRING` con `validate: { isIn: [['admin','enfermera','administracion']] }`. Causa raíz del bug de creación de usuarios.
+- ✅ **Fix test-api.js reinit** — Cambiado `node init-db.js` → `node init-db.js --force` para garantizar BD limpia entre ejecuciones (evita 409 por RUT duplicado y conteo erróneo de sillones).
 
 ### Variables de Entorno (producción)
 
@@ -530,8 +542,15 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 
 | # | Mejora | Descripción | Esfuerzo |
 |---|--------|-------------|----------|
-| G9 | **Dashboard con gráficos** | `recharts`: sesiones por día + top medicamentos. Nuevo endpoint `GET /api/dashboard/charts`. | Medio |
+| G9 | **Dashboard con gráficos** | `recharts`: sesiones por día (AreaChart) + top medicamentos (BarChart). Backend: `GET /api/dashboard/charts` con queries SQLite por día y agrupación de SessionMedications. Frontend descartó esta mejora temporalmente por decisión del usuario (solo se conservaron las tarjetas con degradado). | Medio |
 | G12 | **Exportación PDF nativa** | `jsPDF` + `html2canvas` — reemplaza `window.print()` en Reports.js. | Alto |
-| F3 | **2FA/TOTP para admin** | Google Authenticator — nueva columna en Users + UI de configuración. | Alto |
+| F3 | **2FA/TOTP para admin** | Google Authenticator — nueva columna `totpSecret` en Users + UI de configuración. | Alto |
 
-*Última actualización: 2026-04-10 — G13 último uso inventario, E4 resumen sesión imprimible, F2 búsqueda global*
+### Notas para la próxima sesión
+
+- **Tests:** 93/93 backend + 49/49 frontend. `test-api.js` usa `--force` en el reinit — no cambiar.
+- **Modelo User.js:** rol es `DataTypes.STRING` con `validate.isIn` — NO usar ENUM (SQLite no lo soporta nativamente y Sequelize lanzaba error de validación).
+- **Preview de UI:** En este entorno Playwright no puede acceder a localhost desde el proceso chromium (restricción de red del contenedor). La solución fue servir un HTML estático desde el backend vía headless_shell.
+- **Rama activa:** `claude/create-claude-md-Anb2b` en `fimartinflo/cdiemapp`.
+
+*Última actualización: 2026-04-13 — Dashboard gradient cards, Login limpio, fix User ENUM, fix test reinit*
