@@ -42,7 +42,7 @@ const runBackup = async () => {
   if (process.env.DB_DIALECT && process.env.DB_DIALECT !== 'sqlite') return;
 
   if (!fs.existsSync(DB_PATH)) {
-    console.log('ℹ️  Backup omitido: database.sqlite no existe aún.');
+    console.log('[INFO] Backup omitido: database.sqlite no existe aun.');
     return;
   }
 
@@ -55,7 +55,7 @@ const runBackup = async () => {
     const destFile   = path.join(BACKUP_DIR, `backup_${stamp}.sqlite`);
 
     fs.copyFileSync(DB_PATH, destFile);
-    console.log(`✅ Backup creado: backups/backup_${stamp}.sqlite`);
+    console.log(`[OK] Backup creado: backups/backup_${stamp}.sqlite`);
 
     // Purgar backups antiguos — conservar solo los últimos MAX_BACKUPS
     const files = fs.readdirSync(BACKUP_DIR)
@@ -66,12 +66,12 @@ const runBackup = async () => {
       const toDelete = files.slice(0, files.length - MAX_BACKUPS);
       toDelete.forEach(f => {
         fs.unlinkSync(path.join(BACKUP_DIR, f));
-        console.log(`🗑️  Backup antiguo eliminado: ${f}`);
+        console.log(`[INFO] Backup antiguo eliminado: ${f}`);
       });
     }
   } catch (err) {
     // No relanzar — el servidor debe iniciar aunque el backup falle
-    console.error('⚠️  Error al crear backup:', err.message);
+    console.error('[WARN] Error al crear backup:', err.message);
   }
 };
 

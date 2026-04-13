@@ -1,5 +1,14 @@
+/**
+ * Middleware global de manejo de errores para Express.
+ *
+ * Debe registrarse como el ULTIMO middleware en app.js (despues de todas las rutas).
+ * Express lo identifica como manejador de errores por los 4 parametros (err, req, res, next).
+ *
+ * Convierte errores de Sequelize y JWT en respuestas HTTP con codigo apropiado,
+ * y devuelve el stack trace en modo desarrollo para facilitar el debugging.
+ */
 const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err);
+  console.error('[ERROR]', err);
 
   // Error de validación de Sequelize
   if (err.name === 'SequelizeValidationError') {
@@ -41,7 +50,8 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Error por defecto
+  // Error generico — usa err.status si el controlador lo definió, o 500 por defecto.
+  // El stack trace solo se expone en NODE_ENV=development para no filtrar info interna.
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Error interno del servidor',

@@ -46,7 +46,7 @@ async function logAudit({ req, accion, entidad, entidadId = null, detalles = nul
     });
   } catch (err) {
     // Log en consola pero nunca propagar — la auditoría no debe bloquear operaciones clínicas
-    console.error('⚠️  audit.js: fallo al registrar entrada (no crítico):', err.message);
+    console.error('[WARN] audit.js: fallo al registrar entrada (no critico):', err.message);
   }
 }
 

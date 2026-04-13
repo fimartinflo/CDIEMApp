@@ -59,7 +59,7 @@ const Inventory = sequelize.define('Inventory', {
     beforeSave: (inventory) => {
       // Verificar si está por debajo del stock mínimo
       if (inventory.cantidad < inventory.minimoStock) {
-        console.warn(`⚠️ Alerta: ${inventory.nombre} está por debajo del stock mínimo`);
+        console.warn(`[WARN] Alerta: ${inventory.nombre} esta por debajo del stock minimo`);
       }
     }
   }

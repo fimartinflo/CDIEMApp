@@ -41,7 +41,9 @@ import {
   Block as OccupiedIcon,
   Build as MaintenanceIcon,
   MedicalServices as MedIcon,
-  Print as PrintIcon
+  Print as PrintIcon,
+  LocationOn as LocationIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import chairService from '../services/chairService';
 import patientService from '../services/patientService';
@@ -419,8 +421,8 @@ const Chairs = () => {
                     </Box>
 
                     <Typography variant="body1" gutterBottom>{chair.nombre}</Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      📍 {chair.ubicacion || 'Sin ubicación'}
+                    <Typography variant="body2" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <LocationIcon sx={{ fontSize: 14 }} /> {chair.ubicacion || 'Sin ubicacion'}
                     </Typography>
 
                     {/* Paciente actual si está ocupado */}
@@ -888,8 +890,8 @@ const Chairs = () => {
       </Snackbar>
       <Snackbar open={!!stockAlert} autoHideDuration={8000} onClose={() => setStockAlert('')}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="warning" onClose={() => setStockAlert('')} sx={{ fontWeight: 'bold' }}>
-          ⚠️ {stockAlert}
+        <Alert severity="warning" onClose={() => setStockAlert('')} sx={{ fontWeight: 'bold' }} icon={<WarningIcon />}>
+          {stockAlert}
         </Alert>
       </Snackbar>
     </Container>

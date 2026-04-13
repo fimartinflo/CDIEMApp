@@ -42,12 +42,12 @@ const umzug = new Umzug({
 async function migrate() {
   const pending = await umzug.pending();
   if (pending.length === 0) {
-    console.log('✅ Base de datos al día — sin migraciones pendientes');
+    console.log('[OK] Base de datos al dia — sin migraciones pendientes');
     return;
   }
-  console.log(`🔄 Aplicando ${pending.length} migración(es)...`);
+  console.log(`[INFO] Aplicando ${pending.length} migracion(es)...`);
   await umzug.up();
-  console.log('✅ Migraciones aplicadas correctamente');
+  console.log('[OK] Migraciones aplicadas correctamente');
 }
 
 /**
@@ -55,7 +55,7 @@ async function migrate() {
  */
 async function migrateUndo() {
   await umzug.down();
-  console.log('↩️  Última migración revertida');
+  console.log('[OK] Ultima migracion revertida');
 }
 
 /**
@@ -64,9 +64,9 @@ async function migrateUndo() {
 async function status() {
   const executed = await umzug.executed();
   const pending  = await umzug.pending();
-  console.log('\n📋 Estado de migraciones:');
-  executed.forEach(m => console.log(`  ✅ ${m.name}`));
-  pending.forEach(m  => console.log(`  ⏳ ${m.name}`));
+  console.log('\n[INFO] Estado de migraciones:');
+  executed.forEach(m => console.log(`  [aplicada]  ${m.name}`));
+  pending.forEach(m  => console.log(`  [pendiente] ${m.name}`));
   console.log('');
 }
 
@@ -81,5 +81,5 @@ if (require.main === module) {
 
   fn()
     .then(() => process.exit(0))
-    .catch(err => { console.error('❌ Error en migración:', err); process.exit(1); });
+    .catch(err => { console.error('[ERROR] Error en migracion:', err); process.exit(1); });
 }

@@ -48,7 +48,9 @@ import {
   CalendarToday as CalendarIcon,
   History as HistoryIcon,
   MedicalServices as MedIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon
 } from '@mui/icons-material';
 import patientService from '../services/patientService';
 import PatientForm from '../components/PatientForm';
@@ -433,10 +435,14 @@ const Patients = () => {
                     <TableCell>
                       <Box>
                         {patient.telefono && (
-                          <Typography variant="body2">📞 {patient.telefono}</Typography>
+                          <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <PhoneIcon sx={{ fontSize: 14 }} /> {patient.telefono}
+                          </Typography>
                         )}
                         {patient.correo && (
-                          <Typography variant="body2">✉️ {patient.correo}</Typography>
+                          <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <EmailIcon sx={{ fontSize: 14 }} /> {patient.correo}
+                          </Typography>
                         )}
                       </Box>
                     </TableCell>

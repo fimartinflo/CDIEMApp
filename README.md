@@ -486,35 +486,35 @@ npm run build          # Build de producción (output: build/)
 
 ## Implementado
 
-- ✅ Roles diferenciados: admin, enfermera, administracion
-- ✅ Menú filtrado por rol — cada usuario ve solo sus módulos
-- ✅ Rutas protegidas por rol en frontend y backend
-- ✅ Gestión de usuarios (admin): crear, editar, activar/desactivar, reset contraseña
-- ✅ Rate limiting en login: 10 intentos / 15 min por IP
-- ✅ Aviso de sesión expirada (Snackbar en Login.js)
-- ✅ Exportación CSV de pacientes (BOM UTF-8, compatible Excel español)
-- ✅ Health check mejorado: DB status, dialect, uptime, Node version
-- ✅ Compresión gzip en todas las respuestas
-- ✅ Historial de sillón paginado (?page=&limit=)
-- ✅ Selector de medicamentos del inventario al asignar sillón
-- ✅ Polling en tiempo real para estado de sillones (cada 30s)
-- ✅ Variables de entorno para API_URL y CORS
-- ✅ Módulo de Reportes con costos, exportación Excel y envío por email
-- ✅ Log de auditoría con filtros y paginación (admin only)
-- ✅ Tests E2E con Playwright (login, dashboard, chairs)
-- ✅ Suite de 93 tests de integración backend + 49 tests frontend
-- ✅ Migraciones Sequelize con umzug (10 migraciones)
-- ✅ Soporte multi-BD: SQLite (local) / PostgreSQL via Supabase / Turso libSQL (edge)
-- ✅ Campos clínicos en paciente: diagnóstico, protocolo de tratamiento, alergias
-- ✅ Notas clínicas al liberar sillón + resumen de sesión imprimible
-- ✅ Gestión completa de visitas: agendar, editar, cancelar + vista calendario
-- ✅ Categoría de medicamentos (quimioterapia, premedicación, antieméticos, soporte, general)
-- ✅ Indicador "Último uso" en inventario
-- ✅ Alertas de stock crítico al administrar medicamentos en sillones
-- ✅ Backup automático de SQLite al iniciar (rotación a 7 copias)
-- ✅ Búsqueda global en barra superior (pacientes + medicamentos)
-- ✅ Dashboard con tarjetas de métricas en degradado de color (azul/verde/naranja/teal)
-- ✅ Login limpio — sin credenciales visibles en pantalla
+- Roles diferenciados: admin, enfermera, administracion
+- Menú filtrado por rol — cada usuario ve solo sus módulos
+- Rutas protegidas por rol en frontend y backend
+- Gestión de usuarios (admin): crear, editar, activar/desactivar, reset contraseña
+- Rate limiting en login: 10 intentos / 15 min por IP
+- Aviso de sesión expirada (Snackbar en Login.js)
+- Exportación CSV de pacientes (BOM UTF-8, compatible Excel español)
+- Health check mejorado: DB status, dialect, uptime, Node version
+- Compresión gzip en todas las respuestas
+- Historial de sillón paginado (?page=&limit=)
+- Selector de medicamentos del inventario al asignar sillón
+- Polling en tiempo real para estado de sillones (cada 30s)
+- Variables de entorno para API_URL y CORS
+- Módulo de Reportes con costos, exportación Excel y envío por email
+- Log de auditoría con filtros y paginación (admin only)
+- Tests E2E con Playwright (login, dashboard, chairs)
+- Suite de 93 tests de integración backend + 49 tests frontend
+- Migraciones Sequelize con umzug (10 migraciones)
+- Soporte multi-BD: SQLite (local) / PostgreSQL via Supabase / Turso libSQL (edge)
+- Campos clínicos en paciente: diagnóstico, protocolo de tratamiento, alergias
+- Notas clínicas al liberar sillón + resumen de sesión imprimible
+- Gestión completa de visitas: agendar, editar, cancelar + vista calendario
+- Categoría de medicamentos (quimioterapia, premedicación, antieméticos, soporte, general)
+- Indicador "Último uso" en inventario
+- Alertas de stock crítico al administrar medicamentos en sillones
+- Backup automático de SQLite al iniciar (rotación a 7 copias)
+- Búsqueda global en barra superior (pacientes + medicamentos)
+- Dashboard con tarjetas de métricas en degradado de color (azul/verde/naranja/teal)
+- Login limpio — sin credenciales visibles en pantalla
 
 ## Pendiente / Próximos Pasos
 

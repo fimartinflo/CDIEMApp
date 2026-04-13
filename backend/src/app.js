@@ -80,9 +80,9 @@ const { runBackup } = require('./utils/backup');
   try {
     await sequelize.authenticate();
     await sequelize.sync();
-    console.log('✅ Conectado y sincronizado con SQLite correctamente');
+    console.log('[OK] Conectado y sincronizado con SQLite correctamente');
   } catch (err) {
-    console.error('❌ Error conectando/sincronizando la BD:', err);
+    console.error('[ERROR] Error conectando/sincronizando la BD:', err);
   }
 })();
 
@@ -230,7 +230,7 @@ app.get('/api/search', auth, async (req, res) => {
 
     success(res, 'Búsqueda', { pacientes, medicamentos });
   } catch (err) {
-    console.error('❌ Error en búsqueda global:', err);
+    console.error('[ERROR] Error en busqueda global:', err);
     error(res, 'Error en búsqueda', 'SEARCH_ERROR', 500);
   }
 });
@@ -284,7 +284,7 @@ app.get('/api/chairs', auth, async (req, res) => {
 
     return res.json({ success: true, data: result });
   } catch (err) {
-    console.error('❌ Error obteniendo sillones:', err);
+    console.error('[ERROR] Error obteniendo sillones:', err);
     return error(res, 'Error obteniendo sillones', 'CHAIRS_FETCH_FAILED', 500);
   }
 });
@@ -370,7 +370,7 @@ app.post('/api/chairs/:id/assign', auth, allowRoles('admin', 'enfermera'), async
 
   } catch (err) {
     await transaction.rollback();
-    console.error('❌ Error asignando sillón:', err);
+    console.error('[ERROR] Error asignando sillon:', err);
     return error(res, 'Error interno del servidor', 'ASSIGNMENT_FAILED', 500);
   }
 });
@@ -455,7 +455,7 @@ app.post('/api/chairs/:id/release', auth, async (req, res) => {
 
   } catch (err) {
     await transaction.rollback();
-    console.error('❌ Error liberando sillón:', err);
+    console.error('[ERROR] Error liberando sillon:', err);
     res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 });
@@ -529,7 +529,7 @@ app.post('/api/chairs/:id/medications', auth, allowRoles('admin', 'enfermera'), 
 
   } catch (err) {
     await transaction.rollback();
-    console.error('❌ Error administrando medicamento:', err);
+    console.error('[ERROR] Error administrando medicamento:', err);
     res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 });
@@ -561,7 +561,7 @@ app.get('/api/chairs/:id/medications', auth, async (req, res) => {
     res.json({ success: true, data: medicamentos });
 
   } catch (err) {
-    console.error('❌ Error obteniendo medicamentos:', err);
+    console.error('[ERROR] Error obteniendo medicamentos:', err);
     res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 });
@@ -599,7 +599,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Error obteniendo dashboard:', err);
+    console.error('[ERROR] Error obteniendo dashboard:', err);
     return error(res, 'Error obteniendo dashboard', 'DASHBOARD_FETCH_FAILED', 500);
   }
 });
@@ -645,7 +645,7 @@ app.get('/api/chairs/live', auth, async (req, res) => {
     return res.json({ success: true, data: result });
 
   } catch (err) {
-    console.error('❌ Error obteniendo estado en vivo:', err);
+    console.error('[ERROR] Error obteniendo estado en vivo:', err);
     return error(res, 'Error obteniendo estado en vivo', 'CHAIRS_LIVE_FAILED', 500);
   }
 });
@@ -685,7 +685,7 @@ app.get('/api/patients/:id/history', auth, async (req, res) => {
     return res.json({ success: true, data: history });
 
   } catch (err) {
-    console.error('❌ Error obteniendo historial clínico:', err);
+    console.error('[ERROR] Error obteniendo historial clinico:', err);
     return error(res, 'Error obteniendo historial clínico', 'PATIENT_HISTORY_FAILED', 500);
   }
 });
@@ -734,7 +734,7 @@ app.get('/api/chairs/:id/history', auth, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Error obteniendo historial del sillón:', err);
+    console.error('[ERROR] Error obteniendo historial del sillon:', err);
     return error(res, 'Error obteniendo historial del sillón', 'CHAIR_HISTORY_FAILED', 500);
   }
 });
@@ -771,14 +771,14 @@ runBackup().catch(() => {});
 
 app.listen(PORT, () => {
   console.log(`
-  🚀 Servidor CDIEM corriendo en puerto ${PORT}
-  🌐 URL: http://localhost:${PORT}
+  Servidor CDIEM corriendo en puerto ${PORT}
+  URL: http://localhost:${PORT}
 
-  🔐 Auth:       POST /api/auth/login
-  👥 Pacientes:  GET/POST /api/patients
-  🪑 Sillones:   GET/POST /api/chairs
-  💊 Inventario: GET/POST /api/inventory
-  📊 Dashboard:  GET /api/dashboard
+  Auth:       POST /api/auth/login
+  Pacientes:  GET/POST /api/patients
+  Sillones:   GET/POST /api/chairs
+  Inventario: GET/POST /api/inventory
+  Dashboard:  GET /api/dashboard
   `);
 });
 
