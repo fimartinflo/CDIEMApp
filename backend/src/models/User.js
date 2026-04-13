@@ -73,14 +73,15 @@ const User = sequelize.define('User', {
   /**
    * Access role that determines what the user can see and do.
    * Values map directly to the allowRoles() middleware checks in route definitions.
-   * NOTE: The ENUM here includes legacy values ('doctor', 'asistente', 'inventario')
-   * from an earlier design; the application currently uses 'admin', 'enfermera',
-   * and 'administracion' as its three active roles.
+   * Active roles: 'admin' | 'enfermera' | 'administracion'
    */
   role: {
-    type: DataTypes.ENUM('admin', 'doctor', 'asistente', 'inventario'),
+    type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: 'asistente'
+    defaultValue: 'enfermera',
+    validate: {
+      isIn: [['admin', 'enfermera', 'administracion']]
+    }
   },
 
   /** Human-readable display name shown in the UI (up to 100 characters). */

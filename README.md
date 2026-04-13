@@ -31,11 +31,12 @@ Sistema de gestión clínica para un centro oncológico. Permite administrar pac
 - Control de inventario con alertas de stock bajo, vencimiento, categorías farmacológicas e indicador de último uso
 - Programación de visitas con calendario visual, edición y cancelación
 - Búsqueda global en barra superior (pacientes + medicamentos simultáneamente)
-- Dashboard con métricas del sistema en tiempo real
+- Dashboard con métricas del sistema en tiempo real (tarjetas con degradado de color por categoría)
 - Módulo de Reportes con costos por sesión, exportación Excel y envío por email
 - Gestión de usuarios (solo admin): crear, editar, activar/desactivar, reset de contraseña
 - Log de auditoría con filtros y paginación (admin)
 - Autenticación JWT con roles diferenciados (admin / enfermera / administracion)
+- Login sin credenciales visibles en pantalla (documentadas solo en este README)
 - Rate limiting en login: 10 intentos / 15 min por IP
 - Backup automático de SQLite al iniciar el servidor (rotación a 7 copias)
 - Compresión gzip en todas las respuestas del backend
@@ -512,9 +513,11 @@ npm run build          # Build de producción (output: build/)
 - ✅ Alertas de stock crítico al administrar medicamentos en sillones
 - ✅ Backup automático de SQLite al iniciar (rotación a 7 copias)
 - ✅ Búsqueda global en barra superior (pacientes + medicamentos)
+- ✅ Dashboard con tarjetas de métricas en degradado de color (azul/verde/naranja/teal)
+- ✅ Login limpio — sin credenciales visibles en pantalla
 
 ## Pendiente / Próximos Pasos
 
-- Dashboard con gráficos (recharts: sesiones por día + top medicamentos)
+- Dashboard con gráficos (recharts: AreaChart sesiones por día + BarChart top medicamentos)
 - Exportación PDF nativa (jsPDF + html2canvas para Reports.js)
 - 2FA/TOTP para rol admin (Google Authenticator)

@@ -7,7 +7,7 @@ module.exports = {
       username:  { type: Sequelize.STRING(50), allowNull: false, unique: true },
       password:  { type: Sequelize.STRING, allowNull: false },
       email:     { type: Sequelize.STRING(100), allowNull: false, unique: true },
-      role:      { type: Sequelize.STRING, allowNull: false, defaultValue: 'asistente' },
+      role:      { type: Sequelize.STRING, allowNull: false, defaultValue: 'enfermera' },
       fullName:  { type: Sequelize.STRING(100), allowNull: false },
       isActive:  { type: Sequelize.BOOLEAN, defaultValue: true },
       lastLogin: { type: Sequelize.DATE, allowNull: true },

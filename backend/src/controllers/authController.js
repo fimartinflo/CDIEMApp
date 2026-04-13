@@ -35,7 +35,7 @@ const authController = {
    * @param {string} req.body.password   - Plain-text password (hashed by User model hook)
    * @param {string} req.body.email      - Unique email address
    * @param {string} req.body.fullName   - Display name
-   * @param {string} [req.body.role]     - Role (defaults to 'asistente' if omitted)
+   * @param {string} [req.body.role]     - Role (defaults to 'enfermera' if omitted)
    *
    * @returns {201} { success, message, data: { user, token } }
    * @returns {400} If username or email already exists
@@ -70,7 +70,7 @@ const authController = {
         password,
         email,
         fullName,
-        role: role || 'asistente'
+        role: role || 'enfermera'
       });
 
       // Generar token

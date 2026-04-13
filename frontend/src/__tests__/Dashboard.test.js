@@ -51,7 +51,7 @@ describe('Dashboard', () => {
     authService.getCurrentUser.mockReturnValue({ role: 'admin', username: 'admin' });
     renderDashboard();
 
-    expect(screen.getByText(/CDIEM - Panel de Control/i)).toBeInTheDocument();
+    expect(screen.getByText(/CDIEM.*Panel de Control/i)).toBeInTheDocument();
   });
 
   test('admin ve todas las cards: Pacientes, Sillones, Inventario, Reportes', async () => {
