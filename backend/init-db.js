@@ -15,17 +15,17 @@ const FORCE = process.argv.includes('--force');
 
 (async () => {
   try {
-    console.log('🗄️  Inicializando base de datos...');
+    console.log('[INFO] Inicializando base de datos...');
 
     if (FORCE) {
       // Borra todas las tablas y el registro de migraciones — solo para desarrollo
-      console.log('⚠️  Modo --force: eliminando tablas existentes...');
+      console.log('[WARN] Modo --force: eliminando tablas existentes...');
       await sequelize.drop();
       // Elimina el historial de migraciones para que todas se apliquen de nuevo
       try {
         await sequelize.query('DROP TABLE IF EXISTS "SequelizeMeta"');
       } catch (_) { /* ignorar si no existe */ }
-      console.log('🗑️  Tablas eliminadas');
+      console.log('[INFO] Tablas eliminadas');
     }
 
     // Aplica migraciones pendientes (crea las tablas que falten)
@@ -60,9 +60,9 @@ const FORCE = process.argv.includes('--force');
           isActive: true
         }
       ], { individualHooks: true }); // individualHooks activa el hash bcrypt
-      console.log('👤 Usuarios creados');
+      console.log('[OK] Usuarios creados');
     } else {
-      console.log(`👤 Usuarios ya existentes (${userCount}) — omitiendo seed`);
+      console.log(`[INFO] Usuarios ya existentes (${userCount}) — omitiendo seed`);
     }
 
     // ── Seed: sillones ──────────────────────────────────────────────────────
@@ -74,9 +74,9 @@ const FORCE = process.argv.includes('--force');
         { numero: 'S3', nombre: 'Sillón 3', ubicacion: 'Sala B', estado: 'disponible', activo: true },
         { numero: 'S4', nombre: 'Sillón 4', ubicacion: 'Sala B', estado: 'mantenimiento', activo: true }
       ]);
-      console.log('🪑 Sillones creados');
+      console.log('[OK] Sillones creados');
     } else {
-      console.log(`🪑 Sillones ya existentes (${chairCount}) — omitiendo seed`);
+      console.log(`[INFO] Sillones ya existentes (${chairCount}) — omitiendo seed`);
     }
 
     // ── Seed: medicamentos ──────────────────────────────────────────────────
@@ -111,13 +111,13 @@ const FORCE = process.argv.includes('--force');
           activo: true
         }
       ]);
-      console.log('💊 Medicamentos creados');
+      console.log('[OK] Medicamentos creados');
     } else {
-      console.log(`💊 Medicamentos ya existentes (${medCount}) — omitiendo seed`);
+      console.log(`[INFO] Medicamentos ya existentes (${medCount}) — omitiendo seed`);
     }
 
     console.log('');
-    console.log('🎉 Base de datos inicializada correctamente');
+    console.log('[OK] Base de datos inicializada correctamente');
     console.log('');
     console.log('Usuarios disponibles:');
     console.log('  admin          / admin123      (rol: admin — acceso completo)');
@@ -126,7 +126,7 @@ const FORCE = process.argv.includes('--force');
     process.exit(0);
 
   } catch (err) {
-    console.error('❌ Error inicializando la base de datos:', err);
+    console.error('[ERROR] Error inicializando la base de datos:', err);
     process.exit(1);
   }
 })();

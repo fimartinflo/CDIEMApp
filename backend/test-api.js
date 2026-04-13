@@ -59,10 +59,10 @@ async function req(method, path, body = null, auth = true) {
 
 function assert(name, condition, details = '') {
   if (condition) {
-    console.log(`  ✅ ${name}`);
+    console.log(`  [PASS] ${name}`);
     passed++;
   } else {
-    console.log(`  ❌ ${name}${details ? ': ' + details : ''}`);
+    console.log(`  [FAIL] ${name}${details ? ': ' + details : ''}`);
     failed++;
     failures.push(`${name}${details ? ' — ' + details : ''}`);
   }
@@ -281,7 +281,7 @@ async function testClinicalFlow() {
   section('FLUJO CLÍNICO COMPLETO');
 
   if (!patientId || !chairId || !medicationId) {
-    console.log('  ⚠️  Saltando flujo clínico (faltan IDs de tests anteriores)');
+    console.log('  [SKIP] Saltando flujo clinico (faltan IDs de tests anteriores)');
     return;
   }
 
@@ -464,9 +464,9 @@ async function main() {
   console.log('\n  Reinicializando base de datos...');
   try {
     execSync('node init-db.js --force', { cwd: __dirname, stdio: 'pipe' });
-    console.log('  ✅ Base de datos reinicializada\n');
+    console.log('  [OK] Base de datos reinicializada\n');
   } catch (e) {
-    console.error('  ❌ Error reinicializando DB:', e.stderr?.toString());
+    console.error('  [ERROR] Error reinicializando DB:', e.stderr?.toString());
     process.exit(1);
   }
 
@@ -481,7 +481,7 @@ async function main() {
     await testUserManagement();
     await testMiscEndpoints();
   } catch (err) {
-    console.error('\n💥 Error fatal en tests:', err.message);
+    console.error('\n[FATAL] Error fatal en tests:', err.message);
     failed++;
   }
 

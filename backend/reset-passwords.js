@@ -19,7 +19,7 @@ const { sequelize, User } = require('./src/models');
     for (const { username, newPassword, role, fullName } of users) {
       const user = await User.findOne({ where: { username } });
       if (!user) {
-        console.log(`⚠️  Usuario '${username}' no encontrado — se creará`);
+        console.log(`[WARN] Usuario '${username}' no encontrado — se creará`);
         await User.create({
           username,
           password: newPassword,
@@ -28,12 +28,12 @@ const { sequelize, User } = require('./src/models');
           role,
           isActive: true
         });
-        console.log(`✅ Usuario '${username}' creado`);
+        console.log(`[OK] Usuario '${username}' creado`);
       } else {
         user.password = newPassword; // el hook beforeUpdate hasheará esto
         user.isActive = true;
         await user.save();
-        console.log(`✅ Contraseña de '${username}' reseteada`);
+        console.log(`[OK] Contraseña de '${username}' reseteada`);
       }
     }
 
@@ -43,7 +43,7 @@ const { sequelize, User } = require('./src/models');
     console.log('  administracion / admin2024     (rol: administracion — solo reportes)');
     process.exit(0);
   } catch (err) {
-    console.error('❌ Error:', err.message);
+    console.error('[ERROR]', err.message);
     process.exit(1);
   }
 })();

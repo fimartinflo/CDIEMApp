@@ -45,7 +45,7 @@ const src = new Sequelize({
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.error('❌  DATABASE_URL no definida.');
+  console.error('[ERROR] DATABASE_URL no definida.');
   console.error('    Ejemplo: DATABASE_URL="postgresql://postgres.[ref]:[pass]@[host]:6543/postgres" node scripts/sqlite-to-postgres.js');
   process.exit(1);
 }
@@ -103,7 +103,7 @@ async function resetSequence(db, table) {
     `);
   } catch (err) {
     // Algunas tablas pueden no tener secuencia (ej. sin PK serial) — ignorar
-    console.warn(`  ⚠️  No se pudo resetear secuencia de ${table}: ${err.message}`);
+    console.warn(`  [WARN] No se pudo resetear secuencia de ${table}: ${err.message}`);
   }
 }
 
@@ -161,19 +161,19 @@ async function insertRows(db, table, rows) {
 
 (async () => {
   console.log('');
-  console.log('🔄  CDIEMApp — Migración SQLite → PostgreSQL (Supabase)');
+  console.log('CDIEMApp — Migracion SQLite -> PostgreSQL (Supabase)');
   console.log('────────────────────────────────────────────────────────');
-  console.log(`📂  Fuente  : ${srcPath}`);
-  console.log(`☁️   Destino : ${databaseUrl.replace(/:[^:@]+@/, ':***@')}`);
-  console.log(`🔧  Modo    : ${FORCE ? '--force (truncar destino antes)' : 'idempotente (ON CONFLICT DO NOTHING)'}`);
+  console.log(`Fuente  : ${srcPath}`);
+  console.log(`Destino : ${databaseUrl.replace(/:[^:@]+@/, ':***@')}`);
+  console.log(`Modo    : ${FORCE ? '--force (truncar destino antes)' : 'idempotente (ON CONFLICT DO NOTHING)'}`);
   console.log('');
 
   try {
     // Verificar conexiones
     await src.authenticate();
-    console.log('✅  Conexión SQLite OK');
+    console.log('[OK] Conexion SQLite OK');
     await dst.authenticate();
-    console.log('✅  Conexión PostgreSQL OK');
+    console.log('[OK] Conexion PostgreSQL OK');
     console.log('');
 
     // Asegurarse de que las tablas existen en destino
@@ -184,7 +184,7 @@ async function insertRows(db, table, rows) {
     const dstTableNames = dstTables.map(r => r.tablename);
     const missingTables = TABLES.filter(t => !dstTableNames.includes(t));
     if (missingTables.length > 0) {
-      console.error(`❌  Faltan tablas en destino: ${missingTables.join(', ')}`);
+      console.error(`[ERROR] Faltan tablas en destino: ${missingTables.join(', ')}`);
       console.error('    Ejecuta primero: DB_DIALECT=postgres DATABASE_URL="..." node init-db.js');
       process.exit(1);
     }
@@ -194,8 +194,8 @@ async function insertRows(db, table, rows) {
       for (const table of TABLES) {
         const [[{ count }]] = await dst.query(`SELECT COUNT(*) as count FROM "${table}"`);
         if (parseInt(count) > 0) {
-          console.warn(`⚠️  La tabla ${table} ya tiene ${count} registros en destino.`);
-          console.warn('   Se omitirán duplicados (ON CONFLICT DO NOTHING).');
+          console.warn(`[WARN] La tabla ${table} ya tiene ${count} registros en destino.`);
+          console.warn('   Se omitiran duplicados (ON CONFLICT DO NOTHING).');
           console.warn('   Usa --force para truncar y reinsertar todo.');
         }
       }
@@ -204,7 +204,7 @@ async function insertRows(db, table, rows) {
 
     // Truncar en orden inverso si --force
     if (FORCE) {
-      console.log('🗑️  Truncando tablas en destino (orden inverso)...');
+      console.log('[INFO] Truncando tablas en destino (orden inverso)...');
       for (const table of [...TABLES].reverse()) {
         await truncateTable(dst, table);
         process.stdout.write(`   ✓ ${table}\n`);
@@ -214,21 +214,21 @@ async function insertRows(db, table, rows) {
 
     // Migrar tabla por tabla
     let totalRows = 0;
-    console.log('📤  Migrando datos...');
+    console.log('[INFO] Migrando datos...');
     for (const table of TABLES) {
       const rows = await readAll(src, table);
       if (rows.length === 0) {
-        console.log(`   ⏭️  ${table.padEnd(22)} — vacía, omitida`);
+        console.log(`   [SKIP] ${table.padEnd(22)} — vacia, omitida`);
         continue;
       }
       await insertRows(dst, table, rows);
       await resetSequence(dst, table);
-      console.log(`   ✅  ${table.padEnd(22)} — ${rows.length} registro(s)`);
+      console.log(`   [OK]   ${table.padEnd(22)} — ${rows.length} registro(s)`);
       totalRows += rows.length;
     }
 
     console.log('');
-    console.log(`🎉  Migración completada — ${totalRows} registros transferidos`);
+    console.log(`[OK] Migracion completada — ${totalRows} registros transferidos`);
     console.log('');
     console.log('Próximos pasos:');
     console.log('  1. Verificar datos en Supabase Dashboard → Table Editor');
@@ -236,7 +236,7 @@ async function insertRows(db, table, rows) {
     console.log('');
 
   } catch (err) {
-    console.error('\n❌  Error durante la migración:', err.message);
+    console.error('\n[ERROR] Error durante la migracion:', err.message);
     if (err.original) console.error('   Detalle:', err.original.message);
     process.exit(1);
   } finally {

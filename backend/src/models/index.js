@@ -1,3 +1,18 @@
+/**
+ * models/index.js — Punto de entrada de todos los modelos Sequelize.
+ *
+ * Importa cada modelo y define las asociaciones entre ellos.
+ * Debe ser el único lugar donde se configuran las relaciones FK para evitar
+ * definiciones duplicadas o circulares.
+ *
+ * Patron de asociacion usado:
+ *   hasMany / belongsTo con foreignKey explicito para claridad.
+ *   Las opciones `as` solo se definen cuando hay multiples asociaciones
+ *   entre los mismos modelos (ej. Chair <-> Visit).
+ *
+ * Exporta todos los modelos mas la instancia `sequelize` para que los
+ * controllers y scripts puedan acceder a transacciones y queries raw.
+ */
 const sequelize = require('../config/database');
 
 const Patient          = require('./Patient');

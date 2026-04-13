@@ -15,7 +15,7 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
-import { Search, Clear } from '@mui/icons-material';
+import { Search, Clear, Phone, Email } from '@mui/icons-material';
 import patientService from '../services/patientService';
 
 const PatientSearch = ({ onSelectPatient, label = "Buscar paciente..." }) => {
@@ -145,13 +145,13 @@ const PatientSearch = ({ onSelectPatient, label = "Buscar paciente..." }) => {
                   secondary={
                     <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
                       {patient.telefono && (
-                        <Typography variant="caption">
-                          📞 {patient.telefono}
+                        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                          <Phone sx={{ fontSize: 12 }} /> {patient.telefono}
                         </Typography>
                       )}
                       {patient.correo && (
-                        <Typography variant="caption">
-                          ✉️ {patient.correo}
+                        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                          <Email sx={{ fontSize: 12 }} /> {patient.correo}
                         </Typography>
                       )}
                     </Box>

@@ -296,7 +296,7 @@ npm run init-db        # Aplica migraciones pendientes + seed (no borra datos)
 npm run init-db:force  # Reset completo: borra tablas, recrea y seed (solo dev)
 npm run migrate        # Aplica solo migraciones pendientes (sin seed)
 npm run migrate:undo   # Revierte la última migración aplicada
-npm run migrate:status # Lista estado de cada migración (✅ aplicada / ⏳ pendiente)
+npm run migrate:status # Lista estado de cada migración ([OK] aplicada / [pendiente])
 node test-api.js       # 93 tests de integración (requiere BD limpia + servidor en :3001)
 ```
 
@@ -338,7 +338,7 @@ npm run build    # Build de producción
 - **`Patients.js`** — Búsqueda debounced (500ms) por nombre/RUT/pasaporte, paginación, filtro por estado, campos clínicos (diagnóstico, protocolo, alergias), historial clínico con duración en HH:MM:SS, visitas con vista calendario/lista (paginado), botón "Exportar CSV" → `GET /api/patients/export`
 - **`Users.js`** — Solo admin: tabla con crear/editar/toggle-active/reset-password usando Dialogs MUI
 - **`Chairs.js`** — Cards por sillón, asignación de paciente activo, chip `en_tratamiento`, duración HH:MM:SS en vivo, CRUD separado de botones clínicos, notas clínicas al liberar, resumen de sesión imprimible post-liberación, alerta Snackbar naranja si stock queda crítico
-- **`Inventory.js`** — Tabla con indicadores visuales: ⚠️ stock bajo, chip "Vencido"/"Por vencer"; columna "Último uso" (fecha de última administración); filtro por categoría; botones de escritura visibles solo para `admin` y `administracion`
+- **`Inventory.js`** — Tabla con indicadores visuales: stock bajo (alerta), chip "Vencido"/"Por vencer"; columna "Último uso" (fecha de última administración); filtro por categoría; botones de escritura visibles solo para `admin` y `administracion`
 - **`Reports.js`** — Selección de período, tabla expandible por paciente, exportación Excel (CSV con BOM para Excel español), diálogo de informe individual con impresión funcional, envío por email
 - **`Audit.js`** — Solo admin: log de eventos del sistema con filtros por acción/usuario/entidad y paginación
 
@@ -367,55 +367,55 @@ npm run build    # Build de producción
 
 ### Completado
 
-- ✅ Arquitectura backend completa: modelos, controladores, rutas, middleware
-- ✅ Auth JWT con bcrypt; 3 roles: `admin`, `enfermera`, `administracion`
-- ✅ Control de acceso por rol en backend (`allowRoles`) y frontend (botones/rutas condicionales)
-- ✅ **Permisos de inventario:** enfermera (lectura), administracion (lectura + escritura), admin (todo)
-- ✅ **Permisos de sillones CRUD:** admin + enfermera (la operación clínica también)
-- ✅ Dashboard filtra tarjetas de acceso rápido según rol
-- ✅ PatientForm: selector de estado deshabilitado cuando `en_tratamiento`
-- ✅ Chairs: botones clínicos y CRUD separados visualmente; duración en HH:MM:SS; chip `en_tratamiento`
-- ✅ Duración de sesiones en HH:MM:SS en todos los módulos (backend devuelve `duracionSegundos`)
-- ✅ Reports: exportación Excel, impresión funcional con `visibility` CSS (fix MUI Dialog portal)
-- ✅ Polling de sillones cada 30s
-- ✅ Variables de entorno para API_URL y CORS
-- ✅ Scripts de producción: `ecosystem.config.js` (PM2), `nginx.conf.example`
-- ✅ `reset-passwords.js`: recuperación de credenciales sin borrar datos
-- ✅ **Suite de 93 tests de integración** (`test-api.js`) — 93/93 pasando; cubre auth, pacientes, inventario, sillones, flujo clínico, gestión usuarios, export CSV, chair reset y audit log
-- ✅ **49 tests frontend** (Jest + RTL): Login, Dashboard, Patients, Chairs, Inventory, Reports, Users — 49/49 pasando
-- ✅ **RUT edge case fix**: `createPatient`/`updatePatient` rechazan RUT vacío con `tipoIdentificacion='rut'`
-- ✅ **Refresco silencioso de sillones**: `silentLoadChairs()` actualiza sin spinner tras acciones
-- ✅ **MUI confirm dialogs**: `window.confirm()` reemplazado en Chairs.js e Inventory.js
-- ✅ **PYTHON_BIN configurable**: `process.env.PYTHON_BIN || 'python3'` en reportController.js
-- ✅ **Timeout proceso Python**: `PYTHON_TIMEOUT_MS` (default 60s), mata el proceso con `SIGTERM`
-- ✅ **A1 — Gestión de usuarios (admin)**: `GET|POST|PUT /api/auth/users`, toggle-active, reset-password; página `Users.js` con tabla + Dialogs; menú "Usuarios" en Layout (solo admin); ruta `/users` con `RoleRoute(['admin'])`
-- ✅ **A2 — Rate limiting login**: `express-rate-limit` en `POST /api/auth/login` (10 req / 15 min por IP)
-- ✅ **A3 — Sesión expirada**: `sessionStorage.session_expired` → Snackbar warning en Login.js
-- ✅ **B1 — Export CSV pacientes**: `GET /api/patients/export` (BOM UTF-8, separador `;`, compatible Excel español); botón "Exportar CSV" en Patients.js
-- ✅ **B3 — Health check mejorado**: `GET /health` incluye `database.status`, `database.dialect`, `uptime`, `node`, `version`
-- ✅ **B4 — README actualizado**: refleja todos los módulos y endpoints actuales
-- ✅ **C1 — Gzip compression**: `compression` registrado antes de CORS en `app.js`
-- ✅ **C2 — Chair history paginado**: `GET /api/chairs/:id/history?page=&limit=` → respuesta con `pagination: {total, page, pages, limit}`
-- ✅ **B2 — Log de auditoría**: modelo `AuditLog` + migration 008 (con índices), `utils/audit.js` helper no-bloqueante; hooks en controllers (patient, inventory) y inline en app.js (assign/release); `GET /api/audit` (admin only) con filtros y paginación; Dashboard muestra tarjeta y métrica de usuarios (admin)
-- ✅ **C3 — Playwright E2E**: setup en `e2e/` con `playwright.config.js` + 3 archivos de test: `login.spec.js`, `dashboard.spec.js`, `chairs.spec.js`
-- ✅ **Comentarios**: todos los archivos del proyecto comentados con JSDoc/inline (controllers, models, middleware, routes, utils, services, components, migrations)
-- ✅ **G1 — Fix bug email reportes**: `s.minutosTotales` → `Math.floor((s.segundosTotales || 0) / 60)` en `reportController.js`
-- ✅ **G2 — Notas clínicas al liberar sillón**: campo de observaciones en Dialog de liberación; `POST /:id/release` acepta `{ notas }` en body
-- ✅ **G3 — Campos clínicos en paciente**: migración 009 agrega `diagnostico`, `protocoloTratamiento`, `alergias`; sección "Información Clínica" en PatientForm.js
-- ✅ **G4 — Botón "Enviar por Email"**: Dialog con campo email en Reports.js; llama a `POST /api/reports/email` (backend ya implementado con nodemailer)
-- ✅ **G5 — Gestión de visitas**: `PUT /api/patients/:id/visits/:visitId` y `DELETE` para editar/cancelar visitas; botones en modal de Patients.js
-- ✅ **G6 — Backup automático**: `utils/backup.js` copia `database.sqlite` a `backups/` al iniciar; rotación a 7 copias; `backup.bat` para Windows
-- ✅ **G7 — Alertas stock en Chairs**: Snackbar naranja cuando `alertaStock: true` tras administrar medicamento
-- ✅ **G8 — Categoría de medicamentos**: migración 010, campo `categoria` en Medication; filtro dropdown y chip en Inventory.js
-- ✅ **G10 — Historial de visitas paginado**: paginación client-side (5 por página) en modal de visitas de Patients.js
-- ✅ **G11 — Vista calendario de visitas**: `DateCalendar` de MUI x-date-pickers con badges en días con visitas; tabs Lista/Calendario en modal
-- ✅ **G13 — Indicador "Último uso" en Inventario**: subconsulta `MAX(SessionMedications.createdAt)` en `getAllItems`; columna "Último Uso" en tabla de Inventory.js
-- ✅ **E4 — Resumen de sesión imprimible**: al liberar sillón, Dialog con paciente/duración/medicamentos/precios + botón Imprimir (CSS print oculta el resto)
-- ✅ **F2 — Búsqueda global**: `GET /api/search?q=` (pacientes + medicamentos); barra de búsqueda debounced en AppBar de Layout.js con Popper de resultados agrupados
-- ✅ **Dashboard UI** — Tarjetas de métricas rediseñadas con fondo degradado en color (azul/verde/naranja/teal), íconos blancos, sombra de color. Hover en tarjetas de navegación con `translateY(-4px)`.
-- ✅ **Login limpio** — Eliminados helperText de campos y bloque "Credenciales de acceso". Credenciales solo en README.md.
-- ✅ **Fix User.js ENUM** — `DataTypes.ENUM('admin','doctor','asistente','inventario')` → `DataTypes.STRING` con `validate: { isIn: [['admin','enfermera','administracion']] }`. Causa raíz del bug de creación de usuarios.
-- ✅ **Fix test-api.js reinit** — Cambiado `node init-db.js` → `node init-db.js --force` para garantizar BD limpia entre ejecuciones (evita 409 por RUT duplicado y conteo erróneo de sillones).
+- Arquitectura backend completa: modelos, controladores, rutas, middleware
+- Auth JWT con bcrypt; 3 roles: `admin`, `enfermera`, `administracion`
+- Control de acceso por rol en backend (`allowRoles`) y frontend (botones/rutas condicionales)
+- **Permisos de inventario:** enfermera (lectura), administracion (lectura + escritura), admin (todo)
+- **Permisos de sillones CRUD:** admin + enfermera (la operación clínica también)
+- Dashboard filtra tarjetas de acceso rápido según rol
+- PatientForm: selector de estado deshabilitado cuando `en_tratamiento`
+- Chairs: botones clínicos y CRUD separados visualmente; duración en HH:MM:SS; chip `en_tratamiento`
+- Duración de sesiones en HH:MM:SS en todos los módulos (backend devuelve `duracionSegundos`)
+- Reports: exportación Excel, impresión funcional con `visibility` CSS (fix MUI Dialog portal)
+- Polling de sillones cada 30s
+- Variables de entorno para API_URL y CORS
+- Scripts de producción: `ecosystem.config.js` (PM2), `nginx.conf.example`
+- `reset-passwords.js`: recuperación de credenciales sin borrar datos
+- **Suite de 93 tests de integración** (`test-api.js`) — 93/93 pasando; cubre auth, pacientes, inventario, sillones, flujo clínico, gestión usuarios, export CSV, chair reset y audit log
+- **49 tests frontend** (Jest + RTL): Login, Dashboard, Patients, Chairs, Inventory, Reports, Users — 49/49 pasando
+- **RUT edge case fix**: `createPatient`/`updatePatient` rechazan RUT vacío con `tipoIdentificacion='rut'`
+- **Refresco silencioso de sillones**: `silentLoadChairs()` actualiza sin spinner tras acciones
+- **MUI confirm dialogs**: `window.confirm()` reemplazado en Chairs.js e Inventory.js
+- **PYTHON_BIN configurable**: `process.env.PYTHON_BIN || 'python3'` en reportController.js
+- **Timeout proceso Python**: `PYTHON_TIMEOUT_MS` (default 60s), mata el proceso con `SIGTERM`
+- **A1 — Gestión de usuarios (admin)**: `GET|POST|PUT /api/auth/users`, toggle-active, reset-password; página `Users.js` con tabla + Dialogs; menú "Usuarios" en Layout (solo admin); ruta `/users` con `RoleRoute(['admin'])`
+- **A2 — Rate limiting login**: `express-rate-limit` en `POST /api/auth/login` (10 req / 15 min por IP)
+- **A3 — Sesión expirada**: `sessionStorage.session_expired` → Snackbar warning en Login.js
+- **B1 — Export CSV pacientes**: `GET /api/patients/export` (BOM UTF-8, separador `;`, compatible Excel español); botón "Exportar CSV" en Patients.js
+- **B3 — Health check mejorado**: `GET /health` incluye `database.status`, `database.dialect`, `uptime`, `node`, `version`
+- **B4 — README actualizado**: refleja todos los módulos y endpoints actuales
+- **C1 — Gzip compression**: `compression` registrado antes de CORS en `app.js`
+- **C2 — Chair history paginado**: `GET /api/chairs/:id/history?page=&limit=` → respuesta con `pagination: {total, page, pages, limit}`
+- **B2 — Log de auditoría**: modelo `AuditLog` + migration 008 (con índices), `utils/audit.js` helper no-bloqueante; hooks en controllers (patient, inventory) y inline en app.js (assign/release); `GET /api/audit` (admin only) con filtros y paginación; Dashboard muestra tarjeta y métrica de usuarios (admin)
+- **C3 — Playwright E2E**: setup en `e2e/` con `playwright.config.js` + 3 archivos de test: `login.spec.js`, `dashboard.spec.js`, `chairs.spec.js`
+- **Comentarios**: todos los archivos del proyecto comentados con JSDoc/inline (controllers, models, middleware, routes, utils, services, components, migrations)
+- **G1 — Fix bug email reportes**: `s.minutosTotales` → `Math.floor((s.segundosTotales || 0) / 60)` en `reportController.js`
+- **G2 — Notas clínicas al liberar sillón**: campo de observaciones en Dialog de liberación; `POST /:id/release` acepta `{ notas }` en body
+- **G3 — Campos clínicos en paciente**: migración 009 agrega `diagnostico`, `protocoloTratamiento`, `alergias`; sección "Información Clínica" en PatientForm.js
+- **G4 — Botón "Enviar por Email"**: Dialog con campo email en Reports.js; llama a `POST /api/reports/email` (backend ya implementado con nodemailer)
+- **G5 — Gestión de visitas**: `PUT /api/patients/:id/visits/:visitId` y `DELETE` para editar/cancelar visitas; botones en modal de Patients.js
+- **G6 — Backup automático**: `utils/backup.js` copia `database.sqlite` a `backups/` al iniciar; rotación a 7 copias; `backup.bat` para Windows
+- **G7 — Alertas stock en Chairs**: Snackbar naranja cuando `alertaStock: true` tras administrar medicamento
+- **G8 — Categoría de medicamentos**: migración 010, campo `categoria` en Medication; filtro dropdown y chip en Inventory.js
+- **G10 — Historial de visitas paginado**: paginación client-side (5 por página) en modal de visitas de Patients.js
+- **G11 — Vista calendario de visitas**: `DateCalendar` de MUI x-date-pickers con badges en días con visitas; tabs Lista/Calendario en modal
+- **G13 — Indicador "Último uso" en Inventario**: subconsulta `MAX(SessionMedications.createdAt)` en `getAllItems`; columna "Último Uso" en tabla de Inventory.js
+- **E4 — Resumen de sesión imprimible**: al liberar sillón, Dialog con paciente/duración/medicamentos/precios + botón Imprimir (CSS print oculta el resto)
+- **F2 — Búsqueda global**: `GET /api/search?q=` (pacientes + medicamentos); barra de búsqueda debounced en AppBar de Layout.js con Popper de resultados agrupados
+- **Dashboard UI** — Tarjetas de métricas rediseñadas con fondo degradado en color (azul/verde/naranja/teal), íconos blancos, sombra de color. Hover en tarjetas de navegación con `translateY(-4px)`.
+- **Login limpio** — Eliminados helperText de campos y bloque "Credenciales de acceso". Credenciales solo en README.md.
+- **Fix User.js ENUM** — `DataTypes.ENUM('admin','doctor','asistente','inventario')` → `DataTypes.STRING` con `validate: { isIn: [['admin','enfermera','administracion']] }`. Causa raíz del bug de creación de usuarios.
+- **Fix test-api.js reinit** — Cambiado `node init-db.js` → `node init-db.js --force` para garantizar BD limpia entre ejecuciones (evita 409 por RUT duplicado y conteo erróneo de sillones).
 
 ### Variables de Entorno (producción)
 
@@ -436,10 +436,10 @@ NODE_ENV=production
 REACT_APP_API_URL=https://tu-dominio.cl/api
 ```
 
-- ✅ **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
-- ✅ **Migraciones Sequelize (umzug):** `src/database/migrations/` con 10 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
-- ✅ **Supabase (PostgreSQL cloud):** `DB_DIALECT=postgres` + `DATABASE_URL`; pool conservador; SSL sin verificación de cert; `scripts/sqlite-to-postgres.js` para migrar datos; `backend/.env.supabase` como plantilla
-- ✅ **pg + pg-hstore** instalados en backend (dependencias PostgreSQL)
+- **Turso (libSQL remoto):** `DB_DIALECT=turso` usa `@libsql/sqlite3` como `dialectModule`; credenciales en `backend/.env.turso`
+- **Migraciones Sequelize (umzug):** `src/database/migrations/` con 10 migraciones en orden FK; `migrate.js` reemplaza `sync()`; `init-db.js` es idempotente (no borra datos existentes); `--force` para reset en desarrollo
+- **Supabase (PostgreSQL cloud):** `DB_DIALECT=postgres` + `DATABASE_URL`; pool conservador; SSL sin verificación de cert; `scripts/sqlite-to-postgres.js` para migrar datos; `backend/.env.supabase` como plantilla
+- **pg + pg-hstore** instalados en backend (dependencias PostgreSQL)
 
 ### Modos de Base de Datos
 
@@ -538,7 +538,7 @@ TURSO_AUTH_TOKEN=<ver backend/.env.turso>
 > Esta sección se actualiza al final de cada sesión de trabajo.
 > Todas las mejoras de prioridad alta y media han sido implementadas.
 
-### 🟢 Pendientes (baja prioridad / técnico)
+### Baja prioridad Pendientes (baja prioridad / técnico)
 
 | # | Mejora | Descripción | Esfuerzo |
 |---|--------|-------------|----------|
