@@ -333,7 +333,7 @@ const Reports = () => {
     setCopError('');
     try {
       const blob = await reportService.generateCopExcel(copMes, copAño);
-      downloadBlob(blob, `COP_${String(copMes).padStart(2, '0')}_${copAño}.xlsx`);
+      downloadBlob(blob, `COP ${MONTHS[copMes - 1]}.xlsx`);
     } catch (err) {
       setCopError(err.response?.data?.message || err.message || 'Error generando el archivo COP');
     } finally {
@@ -435,11 +435,11 @@ const Reports = () => {
         <Paper sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0' }}>
           <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <TableChart sx={{ color: '#2e7d32', fontSize: 20 }} />
-            Generar COP Excel (54 hojas)
+            Generar COP Excel (40 hojas)
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Genera el archivo <strong>COP_MM_AAAA.xlsx</strong> con fichas individuales por paciente, resumen mensual,
-            medicamentos, tiempos de sillón y previsiones. Solo disponible para el rol Administración.
+            Genera el archivo <strong>COP [Mes].xlsx</strong> con Resumen, Descripción, Hora Sillón y
+            Previsión (con desplegable de isapres), más 36 hojas adicionales pendientes de contenido.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <FormControl size="small" sx={{ minWidth: 150 }}>

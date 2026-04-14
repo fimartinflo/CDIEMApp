@@ -28,6 +28,13 @@ const Medication = sequelize.define('Medication', {
    * Valores esperados: 'quimioterapia' | 'premedicacion' | 'antieméticos' | 'soporte' | 'general'
    */
   categoria:       { type: DataTypes.STRING,  defaultValue: 'general' },
+  /**
+   * Campos farmacéuticos para el Excel COP (hoja "Hora Sillón" y "Descripción").
+   * Se ingresan al crear o editar el medicamento en Inventario.
+   */
+  codigoInterno:   { type: DataTypes.STRING, allowNull: true },  // Código interno CDIEM
+  principioActivo: { type: DataTypes.STRING, allowNull: true },  // Molécula activa
+  laboratorio:     { type: DataTypes.STRING, allowNull: true },  // Fabricante/distribuidor
   activo:          { type: DataTypes.BOOLEAN, defaultValue: true }  // Borrado lógico
 });
 
