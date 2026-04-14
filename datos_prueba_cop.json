@@ -1,0 +1,587 @@
+{
+  "data": {
+    "periodo": { "desde": "2026-04-01", "hasta": "2026-04-30" },
+    "resumen": {
+      "totalPacientes": 4,
+      "totalSesiones": 8,
+      "costoTotal": 2847500
+    },
+    "pacientes": [
+      {
+        "id": 1,
+        "nombreCompleto": "María González Rojas",
+        "rut": "12.345.678-9",
+        "pasaporte": null,
+        "prevision": "Fonasa",
+        "correo": "mgonzalez@gmail.com",
+        "telefono": "+56912345678",
+        "sesiones": [
+          {
+            "sessionId": 1,
+            "estado": "finalizada",
+            "sillon": "Sillón 1",
+            "horaInicio": "2026-04-02T09:00:00.000Z",
+            "horaFin":    "2026-04-02T13:30:00.000Z",
+            "duracionSegundos": 16200,
+            "notas": "Paciente toleró bien el tratamiento. Sin reacciones adversas.",
+            "medicamentos": [
+              {
+                "id": 1,
+                "nombre": "Oxaliplatino 200mg",
+                "codigoInterno": "OXA-200",
+                "principioActivo": "Oxaliplatino",
+                "laboratorio": "Sandoz",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 2,
+                "precioUnitario": 185000,
+                "subtotal": 370000
+              },
+              {
+                "id": 2,
+                "nombre": "5-Fluorouracilo 500mg",
+                "codigoInterno": "5FU-500",
+                "principioActivo": "Fluorouracilo",
+                "laboratorio": "Pfizer",
+                "categoria": "quimioterapia",
+                "unidad": "ampolla",
+                "cantidad": 4,
+                "precioUnitario": 28000,
+                "subtotal": 112000
+              },
+              {
+                "id": 3,
+                "nombre": "Ondansetron 8mg",
+                "codigoInterno": "OND-8",
+                "principioActivo": "Ondansetron clorhidrato",
+                "laboratorio": "Recalcine",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 2,
+                "precioUnitario": 4500,
+                "subtotal": 9000
+              },
+              {
+                "id": 4,
+                "nombre": "Suero fisiológico 500ml",
+                "codigoInterno": "SF-500",
+                "principioActivo": "Cloruro de sodio 0.9%",
+                "laboratorio": "Baxter",
+                "categoria": "soporte",
+                "unidad": "bolsa",
+                "cantidad": 3,
+                "precioUnitario": 3200,
+                "subtotal": 9600
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 515600
+          },
+          {
+            "sessionId": 2,
+            "estado": "finalizada",
+            "sillon": "Sillón 1",
+            "horaInicio": "2026-04-16T09:00:00.000Z",
+            "horaFin":    "2026-04-16T13:45:00.000Z",
+            "duracionSegundos": 17100,
+            "notas": "Segundo ciclo. Leve nausea controlada con antiemético adicional.",
+            "medicamentos": [
+              {
+                "id": 1,
+                "nombre": "Oxaliplatino 200mg",
+                "codigoInterno": "OXA-200",
+                "principioActivo": "Oxaliplatino",
+                "laboratorio": "Sandoz",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 2,
+                "precioUnitario": 185000,
+                "subtotal": 370000
+              },
+              {
+                "id": 2,
+                "nombre": "5-Fluorouracilo 500mg",
+                "codigoInterno": "5FU-500",
+                "principioActivo": "Fluorouracilo",
+                "laboratorio": "Pfizer",
+                "categoria": "quimioterapia",
+                "unidad": "ampolla",
+                "cantidad": 4,
+                "precioUnitario": 28000,
+                "subtotal": 112000
+              },
+              {
+                "id": 3,
+                "nombre": "Ondansetron 8mg",
+                "codigoInterno": "OND-8",
+                "principioActivo": "Ondansetron clorhidrato",
+                "laboratorio": "Recalcine",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 3,
+                "precioUnitario": 4500,
+                "subtotal": 13500
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 510500
+          }
+        ],
+        "totalPaciente": 1026100
+      },
+      {
+        "id": 2,
+        "nombreCompleto": "Jorge Muñoz Castillo",
+        "rut": "9.876.543-2",
+        "pasaporte": null,
+        "prevision": "Isapre Colmena",
+        "correo": "jmunoz@outlook.com",
+        "telefono": "+56987654321",
+        "sesiones": [
+          {
+            "sessionId": 3,
+            "estado": "finalizada",
+            "sillon": "Sillón 2",
+            "horaInicio": "2026-04-03T08:30:00.000Z",
+            "horaFin":    "2026-04-03T11:00:00.000Z",
+            "duracionSegundos": 9000,
+            "notas": "Paclitaxel semanal. Bien tolerado.",
+            "medicamentos": [
+              {
+                "id": 6,
+                "nombre": "Paclitaxel 300mg",
+                "codigoInterno": "PAC-300",
+                "principioActivo": "Paclitaxel",
+                "laboratorio": "Bristol-Myers Squibb",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 320000,
+                "subtotal": 320000
+              },
+              {
+                "id": 7,
+                "nombre": "Dexametasona 8mg",
+                "codigoInterno": "DEX-8",
+                "principioActivo": "Dexametasona",
+                "laboratorio": "Biosano",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 2,
+                "precioUnitario": 3800,
+                "subtotal": 7600
+              },
+              {
+                "id": 8,
+                "nombre": "Ranitidina 50mg",
+                "codigoInterno": "RAN-50",
+                "principioActivo": "Ranitidina clorhidrato",
+                "laboratorio": "Laboratorio Chile",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 1,
+                "precioUnitario": 2800,
+                "subtotal": 2800
+              },
+              {
+                "id": 4,
+                "nombre": "Suero fisiológico 500ml",
+                "codigoInterno": "SF-500",
+                "principioActivo": "Cloruro de sodio 0.9%",
+                "laboratorio": "Baxter",
+                "categoria": "soporte",
+                "unidad": "bolsa",
+                "cantidad": 2,
+                "precioUnitario": 3200,
+                "subtotal": 6400
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 351800
+          },
+          {
+            "sessionId": 4,
+            "estado": "finalizada",
+            "sillon": "Sillón 2",
+            "horaInicio": "2026-04-10T08:30:00.000Z",
+            "horaFin":    "2026-04-10T11:15:00.000Z",
+            "duracionSegundos": 9900,
+            "notas": "Segunda semana. Sin novedades.",
+            "medicamentos": [
+              {
+                "id": 6,
+                "nombre": "Paclitaxel 300mg",
+                "codigoInterno": "PAC-300",
+                "principioActivo": "Paclitaxel",
+                "laboratorio": "Bristol-Myers Squibb",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 320000,
+                "subtotal": 320000
+              },
+              {
+                "id": 7,
+                "nombre": "Dexametasona 8mg",
+                "codigoInterno": "DEX-8",
+                "principioActivo": "Dexametasona",
+                "laboratorio": "Biosano",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 2,
+                "precioUnitario": 3800,
+                "subtotal": 7600
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 342600
+          }
+        ],
+        "totalPaciente": 694400
+      },
+      {
+        "id": 3,
+        "nombreCompleto": "Ana Sofía Vera Pizarro",
+        "rut": "15.234.567-K",
+        "pasaporte": null,
+        "prevision": "Isapre Banmedica",
+        "correo": "avera@gmail.com",
+        "telefono": "+56956789012",
+        "sesiones": [
+          {
+            "sessionId": 5,
+            "estado": "finalizada",
+            "sillon": "Sillón 3",
+            "horaInicio": "2026-04-07T10:00:00.000Z",
+            "horaFin":    "2026-04-07T16:30:00.000Z",
+            "duracionSegundos": 23400,
+            "notas": "Protocolo AC-T. Primera sesión doxorubicina. Monitoreo cardíaco activo.",
+            "medicamentos": [
+              {
+                "id": 9,
+                "nombre": "Doxorubicina 50mg",
+                "codigoInterno": "DOX-50",
+                "principioActivo": "Doxorubicina clorhidrato",
+                "laboratorio": "Pfizer",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 145000,
+                "subtotal": 145000
+              },
+              {
+                "id": 10,
+                "nombre": "Ciclofosfamida 1g",
+                "codigoInterno": "CIC-1G",
+                "principioActivo": "Ciclofosfamida",
+                "laboratorio": "Sandoz",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 98000,
+                "subtotal": 98000
+              },
+              {
+                "id": 3,
+                "nombre": "Ondansetron 8mg",
+                "codigoInterno": "OND-8",
+                "principioActivo": "Ondansetron clorhidrato",
+                "laboratorio": "Recalcine",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 2,
+                "precioUnitario": 4500,
+                "subtotal": 9000
+              },
+              {
+                "id": 7,
+                "nombre": "Dexametasona 8mg",
+                "codigoInterno": "DEX-8",
+                "principioActivo": "Dexametasona",
+                "laboratorio": "Biosano",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 2,
+                "precioUnitario": 3800,
+                "subtotal": 7600
+              },
+              {
+                "id": 11,
+                "nombre": "Filgrastim 300mcg",
+                "codigoInterno": "FIL-300",
+                "principioActivo": "Filgrastim",
+                "laboratorio": "Amgen",
+                "categoria": "soporte",
+                "unidad": "jeringa",
+                "cantidad": 1,
+                "precioUnitario": 52000,
+                "subtotal": 52000
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              },
+              {
+                "id": 12,
+                "nombre": "Instalación de BIC",
+                "codigoInterno": "BIC-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 25000,
+                "subtotal": 25000
+              }
+            ],
+            "totalSesion": 351600
+          },
+          {
+            "sessionId": 6,
+            "estado": "finalizada",
+            "sillon": "Sillón 3",
+            "horaInicio": "2026-04-21T10:00:00.000Z",
+            "horaFin":    "2026-04-21T16:00:00.000Z",
+            "duracionSegundos": 21600,
+            "notas": "Segunda sesión. Bajó fiebre a las 2h. Flebitis leve en brazo izquierdo.",
+            "medicamentos": [
+              {
+                "id": 9,
+                "nombre": "Doxorubicina 50mg",
+                "codigoInterno": "DOX-50",
+                "principioActivo": "Doxorubicina clorhidrato",
+                "laboratorio": "Pfizer",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 145000,
+                "subtotal": 145000
+              },
+              {
+                "id": 10,
+                "nombre": "Ciclofosfamida 1g",
+                "codigoInterno": "CIC-1G",
+                "principioActivo": "Ciclofosfamida",
+                "laboratorio": "Sandoz",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 98000,
+                "subtotal": 98000
+              },
+              {
+                "id": 3,
+                "nombre": "Ondansetron 8mg",
+                "codigoInterno": "OND-8",
+                "principioActivo": "Ondansetron clorhidrato",
+                "laboratorio": "Recalcine",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 3,
+                "precioUnitario": 4500,
+                "subtotal": 13500
+              },
+              {
+                "id": 7,
+                "nombre": "Dexametasona 8mg",
+                "codigoInterno": "DEX-8",
+                "principioActivo": "Dexametasona",
+                "laboratorio": "Biosano",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 2,
+                "precioUnitario": 3800,
+                "subtotal": 7600
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 279100
+          }
+        ],
+        "totalPaciente": 630700
+      },
+      {
+        "id": 4,
+        "nombreCompleto": "Carlos Ramírez Torres",
+        "rut": "8.765.432-1",
+        "pasaporte": null,
+        "prevision": "Fonasa",
+        "correo": "cramirez@gmail.com",
+        "telefono": "+56978901234",
+        "sesiones": [
+          {
+            "sessionId": 7,
+            "estado": "finalizada",
+            "sillon": "Sillón 4",
+            "horaInicio": "2026-04-14T07:00:00.000Z",
+            "horaFin":    "2026-04-14T10:00:00.000Z",
+            "duracionSegundos": 10800,
+            "notas": "Rituximab. Primera dosis lenta, sin reacciones infusionales.",
+            "medicamentos": [
+              {
+                "id": 13,
+                "nombre": "Rituximab 500mg",
+                "codigoInterno": "RIT-500",
+                "principioActivo": "Rituximab",
+                "laboratorio": "Roche",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 890000,
+                "subtotal": 890000
+              },
+              {
+                "id": 7,
+                "nombre": "Dexametasona 8mg",
+                "codigoInterno": "DEX-8",
+                "principioActivo": "Dexametasona",
+                "laboratorio": "Biosano",
+                "categoria": "premedicacion",
+                "unidad": "ampolla",
+                "cantidad": 1,
+                "precioUnitario": 3800,
+                "subtotal": 3800
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 908800
+          },
+          {
+            "sessionId": 8,
+            "estado": "finalizada",
+            "sillon": "Sillón 4",
+            "horaInicio": "2026-04-28T07:00:00.000Z",
+            "horaFin":    "2026-04-28T09:30:00.000Z",
+            "duracionSegundos": 9000,
+            "notas": "Segunda dosis. Velocidad aumentada. Sin eventos.",
+            "medicamentos": [
+              {
+                "id": 13,
+                "nombre": "Rituximab 500mg",
+                "codigoInterno": "RIT-500",
+                "principioActivo": "Rituximab",
+                "laboratorio": "Roche",
+                "categoria": "quimioterapia",
+                "unidad": "vial",
+                "cantidad": 1,
+                "precioUnitario": 890000,
+                "subtotal": 890000
+              },
+              {
+                "id": 5,
+                "nombre": "Toma de vía venosa",
+                "codigoInterno": "TVV-001",
+                "principioActivo": "",
+                "laboratorio": "",
+                "categoria": "otros",
+                "unidad": "procedimiento",
+                "cantidad": 1,
+                "precioUnitario": 15000,
+                "subtotal": 15000
+              }
+            ],
+            "totalSesion": 905000
+          }
+        ],
+        "totalPaciente": 1813800
+      }
+    ],
+    "sillones": [
+      { "id": 1, "numero": "S1", "nombre": "Sillón 1", "ubicacion": "Sala A", "totalSesiones": 2, "segundosTotales": 33300 },
+      { "id": 2, "numero": "S2", "nombre": "Sillón 2", "ubicacion": "Sala A", "totalSesiones": 2, "segundosTotales": 18900 },
+      { "id": 3, "numero": "S3", "nombre": "Sillón 3", "ubicacion": "Sala B", "totalSesiones": 2, "segundosTotales": 45000 },
+      { "id": 4, "numero": "S4", "nombre": "Sillón 4", "ubicacion": "Sala B", "totalSesiones": 2, "segundosTotales": 19800 }
+    ],
+    "medicamentos": [
+      { "id": 1,  "nombre": "Oxaliplatino 200mg",    "codigoInterno": "OXA-200",  "principioActivo": "Oxaliplatino",             "laboratorio": "Sandoz",                "categoria": "quimioterapia", "unidad": "vial",        "cantidadTotal": 4,  "costoTotal": 740000 },
+      { "id": 2,  "nombre": "5-Fluorouracilo 500mg", "codigoInterno": "5FU-500",  "principioActivo": "Fluorouracilo",            "laboratorio": "Pfizer",                "categoria": "quimioterapia", "unidad": "ampolla",     "cantidadTotal": 8,  "costoTotal": 224000 },
+      { "id": 3,  "nombre": "Ondansetron 8mg",        "codigoInterno": "OND-8",   "principioActivo": "Ondansetron clorhidrato", "laboratorio": "Recalcine",             "categoria": "premedicacion", "unidad": "ampolla",     "cantidadTotal": 10, "costoTotal": 45000  },
+      { "id": 4,  "nombre": "Suero fisiológico 500ml","codigoInterno": "SF-500",  "principioActivo": "Cloruro de sodio 0.9%",   "laboratorio": "Baxter",               "categoria": "soporte",       "unidad": "bolsa",       "cantidadTotal": 5,  "costoTotal": 16000  },
+      { "id": 5,  "nombre": "Toma de vía venosa",     "codigoInterno": "TVV-001", "principioActivo": "",                        "laboratorio": "",                      "categoria": "otros",         "unidad": "procedimiento","cantidadTotal": 8,  "costoTotal": 120000 },
+      { "id": 6,  "nombre": "Paclitaxel 300mg",       "codigoInterno": "PAC-300", "principioActivo": "Paclitaxel",              "laboratorio": "Bristol-Myers Squibb",  "categoria": "quimioterapia", "unidad": "vial",        "cantidadTotal": 2,  "costoTotal": 640000 },
+      { "id": 7,  "nombre": "Dexametasona 8mg",       "codigoInterno": "DEX-8",   "principioActivo": "Dexametasona",            "laboratorio": "Biosano",               "categoria": "premedicacion", "unidad": "ampolla",     "cantidadTotal": 9,  "costoTotal": 34200  },
+      { "id": 8,  "nombre": "Ranitidina 50mg",        "codigoInterno": "RAN-50",  "principioActivo": "Ranitidina clorhidrato",  "laboratorio": "Laboratorio Chile",     "categoria": "premedicacion", "unidad": "ampolla",     "cantidadTotal": 1,  "costoTotal": 2800   },
+      { "id": 9,  "nombre": "Doxorubicina 50mg",      "codigoInterno": "DOX-50",  "principioActivo": "Doxorubicina clorhidrato","laboratorio": "Pfizer",               "categoria": "quimioterapia", "unidad": "vial",        "cantidadTotal": 2,  "costoTotal": 290000 },
+      { "id": 10, "nombre": "Ciclofosfamida 1g",      "codigoInterno": "CIC-1G",  "principioActivo": "Ciclofosfamida",          "laboratorio": "Sandoz",               "categoria": "quimioterapia", "unidad": "vial",        "cantidadTotal": 2,  "costoTotal": 196000 },
+      { "id": 11, "nombre": "Filgrastim 300mcg",      "codigoInterno": "FIL-300", "principioActivo": "Filgrastim",              "laboratorio": "Amgen",                "categoria": "soporte",       "unidad": "jeringa",     "cantidadTotal": 1,  "costoTotal": 52000  },
+      { "id": 12, "nombre": "Instalación de BIC",     "codigoInterno": "BIC-001", "principioActivo": "",                        "laboratorio": "",                      "categoria": "otros",         "unidad": "procedimiento","cantidadTotal": 1,  "costoTotal": 25000  },
+      { "id": 13, "nombre": "Rituximab 500mg",        "codigoInterno": "RIT-500", "principioActivo": "Rituximab",               "laboratorio": "Roche",                "categoria": "quimioterapia", "unidad": "vial",        "cantidadTotal": 2,  "costoTotal": 1780000}
+    ]
+  },
+  "mes": 4,
+  "anio": 2026
+}
