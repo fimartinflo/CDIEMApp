@@ -42,11 +42,11 @@ describe('Login', () => {
     expect(screen.getByRole('button', { name: /iniciar sesión/i })).toBeInTheDocument();
   });
 
-  test('muestra información de los roles disponibles', () => {
+  test('no muestra credenciales visibles en el formulario', () => {
     renderLogin();
-    expect(screen.getByText(/acceso completo/i)).toBeInTheDocument();
-    expect(screen.getByText(/módulo clínico/i)).toBeInTheDocument();
-    expect(screen.getByText(/inventario \+ reportes/i)).toBeInTheDocument();
+    expect(screen.queryByText(/acceso completo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/admin123/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/enfermera123/i)).not.toBeInTheDocument();
   });
 
   test('muestra error cuando las credenciales son incorrectas', async () => {
