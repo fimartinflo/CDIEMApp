@@ -39,11 +39,15 @@ const buildReportData = (sessions, startDate, endDate) => {
     const medicamentosSesion = meds.map(sm => {
       const precio = sm.precioUnitario || sm.Medication?.precio || 0;
       return {
-        nombre: sm.Medication?.nombre || 'Desconocido',
-        unidad: sm.Medication?.unidad || 'unidad',
-        cantidad: sm.cantidadAdministrada,
-        precioUnitario: precio,
-        subtotal: sm.cantidadAdministrada * precio
+        nombre:          sm.Medication?.nombre          || 'Desconocido',
+        codigoInterno:   sm.Medication?.codigoInterno   || '',
+        principioActivo: sm.Medication?.principioActivo || '',
+        laboratorio:     sm.Medication?.laboratorio     || '',
+        categoria:       sm.Medication?.categoria       || 'general',
+        unidad:          sm.Medication?.unidad          || 'unidad',
+        cantidad:        sm.cantidadAdministrada,
+        precioUnitario:  precio,
+        subtotal:        sm.cantidadAdministrada * precio
       };
     });
 
@@ -97,8 +101,15 @@ const buildReportData = (sessions, startDate, endDate) => {
         const precio = sm.precioUnitario || med.precio || 0;
         if (!medicamentosMap[med.id]) {
           medicamentosMap[med.id] = {
-            id: med.id, nombre: med.nombre, unidad: med.unidad,
-            cantidadTotal: 0, costoTotal: 0
+            id:              med.id,
+            nombre:          med.nombre,
+            codigoInterno:   med.codigoInterno   || '',
+            principioActivo: med.principioActivo || '',
+            laboratorio:     med.laboratorio     || '',
+            categoria:       med.categoria       || 'general',
+            unidad:          med.unidad,
+            cantidadTotal:   0,
+            costoTotal:      0
           };
         }
         medicamentosMap[med.id].cantidadTotal += sm.cantidadAdministrada;
@@ -129,7 +140,7 @@ const reportIncludes = [
   { model: Chair, attributes: ['id', 'numero', 'nombre', 'ubicacion'] },
   {
     model: SessionMedication,
-    include: [{ model: Medication, attributes: ['id', 'nombre', 'unidad', 'precio'] }]
+    include: [{ model: Medication, attributes: ['id', 'nombre', 'unidad', 'precio', 'codigoInterno', 'principioActivo', 'laboratorio', 'categoria'] }]
   }
 ];
 
@@ -277,7 +288,8 @@ const reportController = {
       const tmpInput  = `/tmp/cop_input_${stamp}.json`;
       const tmpOutput = `/tmp/COP_${mesStr}_${año}_${stamp}.xlsx`;
 
-      fs.writeFileSync(tmpInput, JSON.stringify({ data: reportData, mes, año }), 'utf8');
+      // Usa clave 'anio' (sin tilde) para evitar problemas de encoding en el proceso Python
+      fs.writeFileSync(tmpInput, JSON.stringify({ data: reportData, mes, anio: año }), 'utf8');
 
       try {
         await new Promise((resolve, reject) => {
@@ -306,7 +318,9 @@ const reportController = {
         throw spawnErr;
       }
 
-      const fileName = `COP_${mesStr}_${año}.xlsx`;
+      const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const fileName = `COP ${MESES[mes - 1]}.xlsx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.sendFile(tmpOutput, { root: '/' }, (sendErr) => {

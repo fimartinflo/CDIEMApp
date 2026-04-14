@@ -42,11 +42,14 @@ import inventoryService from '../services/inventoryService';
 import authService from '../services/authService';
 
 const CATEGORIAS = [
-  { value: 'general',       label: 'General',       color: 'default' },
-  { value: 'quimioterapia', label: 'Quimioterapia', color: 'error'   },
-  { value: 'premedicacion', label: 'Premedicación', color: 'warning' },
-  { value: 'antiemeticos',  label: 'Antieméticos',  color: 'info'    },
-  { value: 'soporte',       label: 'Soporte',       color: 'success' },
+  { value: 'general',       label: 'General',       color: 'default'   },
+  { value: 'quimioterapia', label: 'Quimioterapia', color: 'error'     },
+  { value: 'premedicacion', label: 'Premedicación', color: 'warning'   },
+  { value: 'antiemeticos',  label: 'Antieméticos',  color: 'info'      },
+  { value: 'soporte',       label: 'Soporte',       color: 'success'   },
+  // 'otros': procedimientos intangibles (Toma de PK, Procesamiento PK, etc.)
+  // En el Excel COP se separan en la columna "OTROS" del Resumen y en la sección derecha de Descripción
+  { value: 'otros',         label: 'Otros',         color: 'secondary' },
 ];
 const catLabel = (v) => CATEGORIAS.find(c => c.value === v)?.label || v;
 const catColor = (v) => CATEGORIAS.find(c => c.value === v)?.color || 'default';
@@ -70,15 +73,16 @@ const Inventory = () => {
   const [openQuantityDialog, setOpenQuantityDialog] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
 
-  const [newItem, setNewItem] = useState({
+  const EMPTY_ITEM = {
     nombre: '', descripcion: '', cantidad: 0, unidad: 'unidad',
-    precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10, categoria: 'general'
-  });
+    precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10,
+    categoria: 'general',
+    // Campos para Excel COP
+    codigoInterno: '', principioActivo: '', laboratorio: '',
+  };
 
-  const [editItem, setEditItem] = useState({
-    id: '', nombre: '', descripcion: '', cantidad: 0, unidad: 'unidad',
-    precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10, categoria: 'general'
-  });
+  const [newItem, setNewItem] = useState({ ...EMPTY_ITEM });
+  const [editItem, setEditItem] = useState({ id: '', ...EMPTY_ITEM });
   
   const [quantityData, setQuantityData] = useState({
     id: '',
@@ -113,10 +117,7 @@ const Inventory = () => {
       await inventoryService.createItem(newItem);
       setSuccess('Medicamento creado exitosamente');
       setOpenDialog(false);
-      setNewItem({
-        nombre: '', descripcion: '', cantidad: 0, unidad: 'unidad',
-        precio: 0, fechaExpiracion: null, proveedor: '', minimoStock: 10, categoria: 'general'
-      });
+      setNewItem({ ...EMPTY_ITEM });
       loadItems();
     } catch (err) {
       setError('Error al crear medicamento');
@@ -253,6 +254,7 @@ const Inventory = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Nombre</TableCell>
+                  <TableCell>Código</TableCell>
                   <TableCell>Categoría</TableCell>
                   <TableCell>Descripción</TableCell>
                   <TableCell align="right">Cantidad</TableCell>
@@ -274,6 +276,11 @@ const Inventory = () => {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>{item.nombre}</TableCell>
+                        <TableCell>
+                          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: item.codigoInterno ? 'text.primary' : 'text.disabled' }}>
+                            {item.codigoInterno || '—'}
+                          </Typography>
+                        </TableCell>
                         <TableCell>
                           <Chip
                             label={catLabel(item.categoria || 'general')}
@@ -362,16 +369,19 @@ const Inventory = () => {
                                 size="small"
                                 onClick={() => {
                                   setEditItem({
-                                    id: item.id,
-                                    nombre: item.nombre,
-                                    descripcion: item.descripcion,
-                                    cantidad: item.cantidad,
-                                    unidad: item.unidad,
-                                    precio: item.precio || 0,
+                                    id:              item.id,
+                                    nombre:          item.nombre,
+                                    descripcion:     item.descripcion || '',
+                                    cantidad:        item.cantidad,
+                                    unidad:          item.unidad,
+                                    precio:          item.precio || 0,
                                     fechaExpiracion: item.fechaExpiracion ? new Date(item.fechaExpiracion) : null,
-                                    proveedor: item.proveedor,
-                                    minimoStock: item.minimoStock,
-                                    categoria: item.categoria || 'general'
+                                    proveedor:       item.proveedor || '',
+                                    minimoStock:     item.minimoStock,
+                                    categoria:       item.categoria || 'general',
+                                    codigoInterno:   item.codigoInterno   || '',
+                                    principioActivo: item.principioActivo || '',
+                                    laboratorio:     item.laboratorio     || '',
                                   });
                                   setOpenEditDialog(true);
                                 }}
@@ -490,6 +500,33 @@ const Inventory = () => {
                   ))}
                 </Select>
               </FormControl>
+
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, fontWeight: 600 }}>
+                Datos para Excel COP
+              </Typography>
+              <TextField
+                label="Código Interno"
+                value={newItem.codigoInterno}
+                onChange={(e) => setNewItem({...newItem, codigoInterno: e.target.value})}
+                fullWidth
+                helperText="Código identificador interno (aparece en hojas Descripción y Hora Sillón del COP)"
+              />
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Principio Activo"
+                  value={newItem.principioActivo}
+                  onChange={(e) => setNewItem({...newItem, principioActivo: e.target.value})}
+                  fullWidth
+                  helperText="Molécula activa del medicamento"
+                />
+                <TextField
+                  label="Laboratorio"
+                  value={newItem.laboratorio}
+                  onChange={(e) => setNewItem({...newItem, laboratorio: e.target.value})}
+                  fullWidth
+                  helperText="Fabricante o distribuidor"
+                />
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions>
@@ -589,6 +626,31 @@ const Inventory = () => {
                   ))}
                 </Select>
               </FormControl>
+
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, fontWeight: 600 }}>
+                Datos para Excel COP
+              </Typography>
+              <TextField
+                label="Código Interno"
+                value={editItem.codigoInterno}
+                onChange={(e) => setEditItem({...editItem, codigoInterno: e.target.value})}
+                fullWidth
+                helperText="Código identificador interno (aparece en hojas Descripción y Hora Sillón del COP)"
+              />
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Principio Activo"
+                  value={editItem.principioActivo}
+                  onChange={(e) => setEditItem({...editItem, principioActivo: e.target.value})}
+                  fullWidth
+                />
+                <TextField
+                  label="Laboratorio"
+                  value={editItem.laboratorio}
+                  onChange={(e) => setEditItem({...editItem, laboratorio: e.target.value})}
+                  fullWidth
+                />
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions>
