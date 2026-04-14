@@ -165,6 +165,54 @@ Se conservan las ultimas 7 copias automaticamente.
 
 ---
 
+## Migracion local a la nube (cuando llegue el momento)
+
+El codigo para el traspaso ya esta escrito. Solo se necesitan credenciales externas.
+
+### Lo que el asistente necesita para ejecutarlo
+
+| Que necesita | Quien lo provee |
+|---|---|
+| `DATABASE_URL` de Supabase o PostgreSQL | El usuario, desde el dashboard del proveedor |
+| Confirmacion explicita antes de copiar datos reales | El usuario |
+| Acceso al servidor con el SQLite activo | Ya disponible en este entorno |
+| Codigo nuevo | Nada — ya esta todo escrito |
+
+**Como obtener el DATABASE_URL en Supabase:**
+Crear cuenta en supabase.com (plan gratuito disponible) → Project Settings → Database → Connection string → URI
+
+### Pasos que ejecutara el asistente
+
+```
+1. Backup del SQLite antes de tocar nada
+2. Verificar integridad: conteo de registros por tabla
+3. Crear estructura en la nube:
+      DB_DIALECT=postgres DATABASE_URL="..." node backend/init-db.js
+4. Verificar que todas las migraciones se aplicaron
+5. Copiar los datos:
+      DATABASE_URL="..." node backend/scripts/sqlite-to-postgres.js
+6. Verificar que los conteos coincidan entre SQLite y PostgreSQL
+7. Actualizar backend/.env con las credenciales de produccion
+8. Reiniciar el servidor apuntando a la nube
+9. Smoke test: login, crear registro de prueba, verificar en dashboard de Supabase
+```
+
+### Consideraciones de seguridad de datos
+
+- El SQLite original **no se borra** durante el traspaso — queda como respaldo
+- El asistente pedira confirmacion explicita antes del paso 5 si hay datos clinicos reales
+- Nunca usar `--force` en produccion ni en el SQLite con datos reales
+- Hacer `backup.bat` justo antes de iniciar el proceso
+
+### Por que los datos no se pierden al actualizar codigo
+
+- Las migraciones son numeradas (001 al 010 actuales). Cada nueva funcion agrega un archivo nuevo (011, 012, etc.)
+- `node init-db.js` sin `--force` es idempotente: solo aplica migraciones pendientes, nunca toca registros existentes
+- Las columnas nuevas se agregan con valor por defecto (null o el definido), los registros existentes no se modifican
+- El unico riesgo real es el error humano: usar `--force` en el momento equivocado
+
+---
+
 ## Archivos clave del proyecto
 
 ```
